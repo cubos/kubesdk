@@ -98,4 +98,16 @@ export class ClusterConnection {
       throw e;
     }
   }
+
+  async post(url: string, data: any) {
+    try {
+      const res = await this.client.post(url, data);
+      return res.data;
+    } catch (e) {
+      if (e?.response?.data?.message) {
+        throw new KubernetesError(e.response.data);
+      }
+      throw e;
+    }
+  }
 }

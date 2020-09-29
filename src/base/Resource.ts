@@ -3,14 +3,17 @@ import { LabelSelector } from "../core/types";
 import { validate, _throw } from "../utils";
 import { ClusterConnection } from "./ClusterConnection";
 
-export interface BasicResourceMetadata {
+export interface CreatableMetadata {
   name: string;
+  labels?: Record<string, string>;
+  annotations?: Record<string, string>;
+}
+
+export interface ExtraMetadata {
   selfLink: string;
   uid: string;
   resourceVersion: string;
   creationTimestamp: string;
-  labels?: Record<string, string>;
-  annotations?: Record<string, string>;
   finalizers?: string[];
 }
 
@@ -20,7 +23,7 @@ export interface BasicResourceSpec {
 
 export class Resource<MetadataT, SpecT, StatusT> {
   constructor(
-    public metadata: BasicResourceMetadata & MetadataT,
+    public metadata: CreatableMetadata & ExtraMetadata & MetadataT,
     public spec: SpecT & BasicResourceSpec,
     public status: StatusT
   ) {}
@@ -44,24 +47,29 @@ export class NamespacedResource<MetadataT, SpecT, StatusT> extends Resource<
   static isNamespaced = true;
 }
 
-interface StaticResource<T> {
+interface StaticResource<MetadataT, SpecT, StatusT, T> {
   get(name: string): Promise<T>;
   list(options?: { selector?: Selector; limit?: number }): Promise<T[]>;
+  create(metadata: CreatableMetadata & MetadataT, spec: SpecT): Promise<T>;
 }
 
-interface StaticNamespacedResource<T> {
+interface StaticNamespacedResource<MetadataT, SpecT, StatusT, T> {
   get(namespace: string, name: string): Promise<T>;
   list(options?: {
     namespace?: string;
     selector?: Selector;
     limit?: number;
   }): Promise<T[]>;
+  create(
+    metadata: CreatableMetadata & MetadataT & { namespace: string },
+    spec: SpecT
+  ): Promise<T>;
 }
 
 function implementStaticMethods(
   klass: typeof Resource &
-    StaticResource<Resource<any, any, any>> &
-    StaticNamespacedResource<Resource<any, any, any>>
+    StaticResource<any, any, any, Resource<any, any, any>> &
+    StaticNamespacedResource<any, any, any, Resource<any, any, any>>
 ) {
   const kind =
     klass.kind ?? _throw(new Error(`Please specify 'kind' for ${klass.name}`));
@@ -147,15 +155,16 @@ function implementStaticMethods(
               labelSelector.push(`${expression.key}`);
               break;
             case "DoesNotExist":
-              throw new Error("TODO");
+              labelSelector.push(`!${expression.key}`);
+              break;
             case "In":
               labelSelector.push(
-                `${expression.key} in (${expression.values.join(", ")})`
+                `${expression.key} in (${expression.values.join(",")})`
               );
               break;
             case "NotIn":
               labelSelector.push(
-                `${expression.key} notin (${expression.values.join(", ")})`
+                `${expression.key} notin (${expression.values.join(",")})`
               );
               break;
           }
@@ -207,6 +216,40 @@ function implementStaticMethods(
       )
     );
   };
+
+  klass.create = async (
+    metadata: CreatableMetadata & { namespace?: string },
+    spec: any
+  ) => {
+    const conn = ClusterConnection.current();
+    const base = apiVersion.includes("/") ? `apis` : "api";
+    let obj;
+    if (klass.isNamespaced) {
+      const namespace = metadata.namespace;
+      if (!namespace) {
+        throw new Error("Expected namespaced object to have a namespace");
+      }
+      obj = await conn.post(
+        `/${base}/${apiVersion}/namespaces/${encodeURIComponent(
+          namespace
+        )}/${apiPlural}`,
+        {
+          apiVersion,
+          kind,
+          metadata,
+          spec,
+        }
+      );
+    } else {
+      obj = await conn.post(`/${base}/${apiVersion}/${apiPlural}`, {
+        apiVersion,
+        kind,
+        metadata,
+        spec,
+      });
+    }
+    return await parseObject(conn, obj);
+  };
 }
 
 export function wrapResource<
@@ -219,7 +262,7 @@ export function wrapResource<
   }
 >(klass: T) {
   implementStaticMethods(klass as any);
-  return klass as StaticResource<InstanceT> & T;
+  return klass as StaticResource<MetadataT, SpecT, StatusT, InstanceT> & T;
 }
 
 export function wrapNamespacedResource<
@@ -232,5 +275,11 @@ export function wrapNamespacedResource<
   }
 >(klass: T) {
   implementStaticMethods(klass as any);
-  return klass as StaticNamespacedResource<InstanceT> & T;
+  return klass as StaticNamespacedResource<
+    MetadataT,
+    SpecT,
+    StatusT,
+    InstanceT
+  > &
+    T;
 }
