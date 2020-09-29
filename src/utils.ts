@@ -1,4 +1,4 @@
-import AJV from "ajv-oai";
+import AJV from "ajv";
 
 export class SchemaValidationError extends Error {}
 
@@ -6,7 +6,7 @@ export function validate(schema: object, data: any) {
   const ajv = new AJV({
     allErrors: true,
     format: false,
-    unknownFormats: ["int-or-string", "date-time"],
+    coerceTypes: true,
   });
   const valid = ajv.validate(schema, data);
 
