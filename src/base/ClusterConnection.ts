@@ -30,14 +30,15 @@ export class ClusterConnection {
   public readonly options: Readonly<ClusterConnectionOptions>;
 
   constructor(
-    baseUrl: string,
-    token: string,
-    options: Partial<ClusterConnectionOptions> = {}
+    options: {
+      baseUrl: string;
+      token: string;
+    } & Partial<ClusterConnectionOptions>
   ) {
     this.client = Axios.create({
-      baseURL: baseUrl,
+      baseURL: options.baseUrl,
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${options.token}`,
         Accept: "application/json",
       },
     });
