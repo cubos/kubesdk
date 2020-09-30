@@ -53,6 +53,9 @@ interface StaticResource<MetadataT, SpecT, StatusT, T> {
   create: {} extends SpecT
     ? (metadata: CreatableMetadata & MetadataT, spec?: SpecT) => Promise<T>
     : (metadata: CreatableMetadata & MetadataT, spec: SpecT) => Promise<T>;
+  apply: {} extends SpecT
+    ? (metadata: CreatableMetadata & MetadataT, spec?: SpecT) => Promise<T>
+    : (metadata: CreatableMetadata & MetadataT, spec: SpecT) => Promise<T>;
 }
 
 interface StaticNamespacedResource<MetadataT, SpecT, StatusT, T> {
@@ -63,6 +66,15 @@ interface StaticNamespacedResource<MetadataT, SpecT, StatusT, T> {
     limit?: number;
   }): Promise<T[]>;
   create: {} extends SpecT
+    ? (
+        metadata: CreatableMetadata & MetadataT & { namespace: string },
+        spec?: SpecT
+      ) => Promise<T>
+    : (
+        metadata: CreatableMetadata & MetadataT & { namespace: string },
+        spec: SpecT
+      ) => Promise<T>;
+  apply: {} extends SpecT
     ? (
         metadata: CreatableMetadata & MetadataT & { namespace: string },
         spec?: SpecT
@@ -247,6 +259,44 @@ function implementStaticMethods(
     });
     return await parseObject(conn, obj);
   };
+
+  (klass as StaticResource<any, any, any, Resource<any, any, any>> &
+    StaticNamespacedResource<
+      any,
+      any,
+      any,
+      Resource<any, any, any>
+    >).apply = async (
+    metadata: CreatableMetadata & { namespace?: string },
+    spec: any
+  ) => {
+    const conn = ClusterConnection.current();
+    const base = apiVersion.includes("/") ? `apis` : "api";
+    let url;
+    if (klass.isNamespaced) {
+      const namespace = metadata.namespace;
+      if (!namespace) {
+        throw new Error("Expected namespaced object to have a namespace");
+      }
+      url = `/${base}/${apiVersion}/namespaces/${encodeURIComponent(
+        namespace
+      )}/${apiPlural}`;
+    } else {
+      url = `/${base}/${apiVersion}/${apiPlural}`;
+    }
+    const obj = await conn.apply(
+      `${url}/${metadata.name}?fieldManager=${encodeURIComponent(
+        conn.options.name
+      )}&force=true`,
+      {
+        apiVersion,
+        kind,
+        metadata,
+        spec: spec ?? {},
+      }
+    );
+    return await parseObject(conn, obj);
+  };
 }
 
 export function wrapResource<
@@ -257,9 +307,11 @@ export function wrapResource<
   T extends {
     new (...args: any[]): InstanceT;
   }
->(klass: T) {
+>(
+  klass: T
+): StaticResource<MetadataT, SpecT, StatusT, InstanceT> & Omit<T, "apply"> {
   implementStaticMethods(klass as any);
-  return klass as StaticResource<MetadataT, SpecT, StatusT, InstanceT> & T;
+  return klass as any;
 }
 
 export function wrapNamespacedResource<
@@ -270,13 +322,10 @@ export function wrapNamespacedResource<
   T extends {
     new (...args: any[]): InstanceT;
   }
->(klass: T) {
+>(
+  klass: T
+): StaticNamespacedResource<MetadataT, SpecT, StatusT, InstanceT> &
+  Omit<T, "apply"> {
   implementStaticMethods(klass as any);
-  return klass as StaticNamespacedResource<
-    MetadataT,
-    SpecT,
-    StatusT,
-    InstanceT
-  > &
-    T;
+  return klass as any;
 }

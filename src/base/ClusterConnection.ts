@@ -3,9 +3,10 @@ import Axios, { AxiosInstance } from "axios";
 
 interface ClusterConnectionOptions {
   paranoid: boolean;
+  name: string;
 }
 
-class KubernetesError extends Error {
+export class KubernetesError extends Error {
   public details: any;
   public code: number;
   constructor(obj: any) {
@@ -13,6 +14,13 @@ class KubernetesError extends Error {
     this.details = obj.details;
     this.code = obj.code;
   }
+}
+
+function rethrowError(e: any): never {
+  if (e?.response?.data?.message) {
+    throw new KubernetesError(e.response.data);
+  }
+  throw e;
 }
 
 export class ClusterConnection {
@@ -45,6 +53,7 @@ export class ClusterConnection {
 
     this.options = {
       paranoid: options.paranoid ?? true,
+      name: options.name ?? "kubeoperator",
     };
   }
 
@@ -89,26 +98,31 @@ export class ClusterConnection {
   }
 
   async get(url: string) {
-    try {
-      const res = await this.client.get(url);
-      return res.data;
-    } catch (e) {
-      if (e?.response?.data?.message) {
-        throw new KubernetesError(e.response.data);
-      }
-      throw e;
-    }
+    const res = await this.client.get(url).catch(rethrowError);
+    return res.data;
   }
 
   async post(url: string, data: any) {
-    try {
-      const res = await this.client.post(url, data);
-      return res.data;
-    } catch (e) {
-      if (e?.response?.data?.message) {
-        throw new KubernetesError(e.response.data);
-      }
-      throw e;
-    }
+    const res = await this.client.post(url, data).catch(rethrowError);
+    return res.data;
+  }
+
+  async put(url: string, data: any) {
+    const res = await this.client.put(url, data).catch(rethrowError);
+    return res.data;
+  }
+
+  async patch(url: string, data: any) {
+    const res = await this.client.patch(url, data).catch(rethrowError);
+    return res.data;
+  }
+
+  async apply(url: string, data: any) {
+    const res = await this.client
+      .patch(url, data, {
+        headers: { "Content-Type": "application/apply-patch+yaml" },
+      })
+      .catch(rethrowError);
+    return res.data;
   }
 }
