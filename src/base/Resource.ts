@@ -50,7 +50,9 @@ export class NamespacedResource<MetadataT, SpecT, StatusT> extends Resource<
 interface StaticResource<MetadataT, SpecT, StatusT, T> {
   get(name: string): Promise<T>;
   list(options?: { selector?: Selector; limit?: number }): Promise<T[]>;
-  create(metadata: CreatableMetadata & MetadataT, spec: SpecT): Promise<T>;
+  create: {} extends SpecT
+    ? (metadata: CreatableMetadata & MetadataT, spec?: SpecT) => Promise<T>
+    : (metadata: CreatableMetadata & MetadataT, spec: SpecT) => Promise<T>;
 }
 
 interface StaticNamespacedResource<MetadataT, SpecT, StatusT, T> {
@@ -60,10 +62,15 @@ interface StaticNamespacedResource<MetadataT, SpecT, StatusT, T> {
     selector?: Selector;
     limit?: number;
   }): Promise<T[]>;
-  create(
-    metadata: CreatableMetadata & MetadataT & { namespace: string },
-    spec: SpecT
-  ): Promise<T>;
+  create: {} extends SpecT
+    ? (
+        metadata: CreatableMetadata & MetadataT & { namespace: string },
+        spec?: SpecT
+      ) => Promise<T>
+    : (
+        metadata: CreatableMetadata & MetadataT & { namespace: string },
+        spec: SpecT
+      ) => Promise<T>;
 }
 
 function implementStaticMethods(
@@ -101,23 +108,20 @@ function implementStaticMethods(
   klass.get = async (namespaceOrName: string, name?: string) => {
     const conn = ClusterConnection.current();
     const base = apiVersion.includes("/") ? `apis` : "api";
-    let obj;
+    let url;
     if (klass.isNamespaced) {
       const namespace = namespaceOrName;
       if (!name) {
         throw new Error("Expected to receive resource name");
       }
-      obj = await conn.get(
-        `/${base}/${apiVersion}/namespaces/${encodeURIComponent(
-          namespace
-        )}/${apiPlural}/${encodeURIComponent(name)}`
-      );
+      url = `/${base}/${apiVersion}/namespaces/${encodeURIComponent(
+        namespace
+      )}/${apiPlural}/${encodeURIComponent(name)}`;
     } else {
       name = namespaceOrName;
-      obj = await conn.get(
-        `/${base}/${apiVersion}/${apiPlural}/${encodeURIComponent(name)}`
-      );
+      url = `/${base}/${apiVersion}/${apiPlural}/${encodeURIComponent(name)}`;
     }
+    const obj = await conn.get(url);
     return await parseObject(conn, obj);
   };
 
@@ -223,31 +227,24 @@ function implementStaticMethods(
   ) => {
     const conn = ClusterConnection.current();
     const base = apiVersion.includes("/") ? `apis` : "api";
-    let obj;
+    let url;
     if (klass.isNamespaced) {
       const namespace = metadata.namespace;
       if (!namespace) {
         throw new Error("Expected namespaced object to have a namespace");
       }
-      obj = await conn.post(
-        `/${base}/${apiVersion}/namespaces/${encodeURIComponent(
-          namespace
-        )}/${apiPlural}`,
-        {
-          apiVersion,
-          kind,
-          metadata,
-          spec,
-        }
-      );
+      url = `/${base}/${apiVersion}/namespaces/${encodeURIComponent(
+        namespace
+      )}/${apiPlural}`;
     } else {
-      obj = await conn.post(`/${base}/${apiVersion}/${apiPlural}`, {
-        apiVersion,
-        kind,
-        metadata,
-        spec,
-      });
+      url = `/${base}/${apiVersion}/${apiPlural}`;
     }
+    const obj = await conn.post(url, {
+      apiVersion,
+      kind,
+      metadata,
+      spec: spec ?? {},
+    });
     return await parseObject(conn, obj);
   };
 }
