@@ -51,8 +51,18 @@ interface StaticResource<MetadataT, SpecT, StatusT, T> {
   get(name: string): Promise<T>;
   list(options?: { selector?: Selector; limit?: number }): Promise<T[]>;
   create: {} extends SpecT
-    ? (metadata: CreatableMetadata & MetadataT, spec?: SpecT) => Promise<T>
-    : (metadata: CreatableMetadata & MetadataT, spec: SpecT) => Promise<T>;
+    ? (
+        metadata: Omit<CreatableMetadata, "name"> &
+          MetadataT &
+          ({ generateName: string } | { name: string }),
+        spec?: SpecT
+      ) => Promise<T>
+    : (
+        metadata: Omit<CreatableMetadata, "name"> &
+          MetadataT &
+          ({ generateName: string } | { name: string }),
+        spec: SpecT
+      ) => Promise<T>;
   apply: {} extends SpecT
     ? (metadata: CreatableMetadata & MetadataT, spec?: SpecT) => Promise<T>
     : (metadata: CreatableMetadata & MetadataT, spec: SpecT) => Promise<T>;
@@ -67,11 +77,19 @@ interface StaticNamespacedResource<MetadataT, SpecT, StatusT, T> {
   }): Promise<T[]>;
   create: {} extends SpecT
     ? (
-        metadata: CreatableMetadata & MetadataT & { namespace: string },
+        metadata: Omit<CreatableMetadata, "name"> &
+          MetadataT & { namespace: string } & (
+            | { generateName: string }
+            | { name: string }
+          ),
         spec?: SpecT
       ) => Promise<T>
     : (
-        metadata: CreatableMetadata & MetadataT & { namespace: string },
+        metadata: Omit<CreatableMetadata, "name"> &
+          MetadataT & { namespace: string } & (
+            | { generateName: string }
+            | { name: string }
+          ),
         spec: SpecT
       ) => Promise<T>;
   apply: {} extends SpecT
