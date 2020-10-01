@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from "async_hooks";
 import Axios, { AxiosInstance } from "axios";
+import { Agent } from "https";
 
 interface ClusterConnectionOptions {
   paranoid: boolean;
@@ -41,6 +42,7 @@ export class ClusterConnection {
     options: {
       baseUrl: string;
       token: string;
+      certificate?: Buffer;
     } & Partial<ClusterConnectionOptions>
   ) {
     this.client = Axios.create({
@@ -49,6 +51,13 @@ export class ClusterConnection {
         Authorization: `Bearer ${options.token}`,
         Accept: "application/json",
       },
+      ...(options.certificate
+        ? {
+            httpsAgent: new Agent({
+              ca: options.certificate,
+            }),
+          }
+        : {}),
     });
 
     this.options = {
