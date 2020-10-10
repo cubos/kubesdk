@@ -1,0 +1,14 @@
+name: "Spec"
+on: [pull_request, push]
+
+jobs:
+  spec:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - uses: actions/setup-node@v1
+    - uses: engineerd/setup-kind@v0.4.0
+      with:
+          version: "v0.9.0"
+    - run: npm ci
+    - run: npm test
