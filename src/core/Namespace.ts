@@ -15,9 +15,9 @@ const _class = class Namespace extends Resource<
   NamespaceSpec,
   NamespaceStatus
 > {
-  static kind = "Namespace";
-  static apiPlural = "namespaces";
-  static apiVersion = "v1";
+  protected static kind = "Namespace";
+  protected static apiPlural = "namespaces";
+  protected static apiVersion = "v1";
 };
 
 export const Namespace = wrapResource<

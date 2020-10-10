@@ -264,9 +264,9 @@ const _class = class Pod extends NamespacedResource<
   PodSpec,
   PodStatus
 > {
-  static kind = "Pod";
-  static apiPlural = "pods";
-  static apiVersion = "v1";
+  protected static kind = "Pod";
+  protected static apiPlural = "pods";
+  protected static apiVersion = "v1";
 };
 
 export const Pod = wrapNamespacedResource<

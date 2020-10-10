@@ -28,10 +28,10 @@ export class Resource<MetadataT, SpecT, StatusT> {
     public status: StatusT
   ) {}
 
-  static isNamespaced = false;
-  static kind: string | null = null;
-  static apiVersion: string | null = null;
-  static apiPlural: string | null = null;
+  protected static isNamespaced = false;
+  protected static kind: string | null = null;
+  protected static apiVersion: string | null = null;
+  protected static apiPlural: string | null = null;
 }
 
 type Selector = LabelSelector & {
@@ -44,7 +44,7 @@ export class NamespacedResource<MetadataT, SpecT, StatusT> extends Resource<
   SpecT,
   StatusT
 > {
-  static isNamespaced = true;
+  protected static isNamespaced = true;
 }
 
 interface StaticResource<MetadataT, SpecT, StatusT, T> {
@@ -106,7 +106,12 @@ interface StaticNamespacedResource<MetadataT, SpecT, StatusT, T> {
 function implementStaticMethods(
   klass: typeof Resource &
     StaticResource<any, any, any, Resource<any, any, any>> &
-    StaticNamespacedResource<any, any, any, Resource<any, any, any>>
+    StaticNamespacedResource<any, any, any, Resource<any, any, any>> & {
+      isNamespaced: boolean;
+      kind: string | null;
+      apiVersion: string | null;
+      apiPlural: string | null;
+    }
 ) {
   const kind =
     klass.kind ?? _throw(new Error(`Please specify 'kind' for ${klass.name}`));
