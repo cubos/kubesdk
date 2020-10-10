@@ -39,37 +39,9 @@ function kind(...args) {
   }
 }
 
-const clusters = kind("get", "clusters").split("\n");
-let clusterName = "kube-templates-test";
-
-if (process.env.CI) {
-  for (const cluster of clusters) {
-    if (!cluster.startsWith(`${clusterName}-`)) continue;
-    const date = parseInt(cluster.substr(clusterName.length + 1), 10);
-    if (date < new Date().getTime() - 3600000) {
-      kind("delete", "cluster", "--name", cluster);
-    }
-  }
-  clusterName += `-${new Date().getTime()}`;
-  kind("create", "cluster", "--name", clusterName, "--wait", "2m");
-  setupStorageClass();
-  console.log(kind("get", "clusters"));
-  const kubeconfig = kind("get", "kubeconfig", "--name", clusterName);
-
-  const masterIp = spawnSync("docker", [
-    "inspect",
-    "-f",
-    "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}",
-    `${clusterName}-control-plane`,
-  ])
-    .stdout.toString()
-    .trim();
-
-  writeFileSync(
-    ".spec-kubeconfig",
-    kubeconfig.replace(/127\.0\.0\.1:\d+/g, `${masterIp}:6443`)
-  );
-} else {
+if (!process.env.CI) {
+  const clusters = kind("get", "clusters").split("\n");
+  let clusterName = "kube-templates-test";
   if (!clusters.includes(clusterName)) {
     kind("create", "cluster", "--name", clusterName, "--wait", "1m");
     setupStorageClass();
