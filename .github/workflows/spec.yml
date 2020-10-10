@@ -4,11 +4,21 @@ on: [pull_request, push]
 jobs:
   spec:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        kube:
+          - kindest/node:v1.19.1@sha256:98cf5288864662e37115e362b23e4369c8c4a408f99cbc06e58ac30ddc721600
+          - kindest/node:v1.18.8@sha256:f4bcc97a0ad6e7abaf3f643d890add7efe6ee4ab90baeb374b4f41a4c95567eb
+          - kindest/node:v1.17.11@sha256:5240a7a2c34bf241afb54ac05669f8a46661912eab05705d660971eeb12f6555
+          - kindest/node:v1.16.15@sha256:a89c771f7de234e6547d43695c7ab047809ffc71a0c3b65aa54eda051c45ed20
     steps:
-    - uses: actions/checkout@master
-    - uses: actions/setup-node@v1
-    - uses: engineerd/setup-kind@v0.4.0
-      with:
+      - uses: actions/checkout@master
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 14
+      - uses: engineerd/setup-kind@v0.4.0
+        with:
           version: "v0.9.0"
-    - run: npm ci
-    - run: npm test
+          image: ${{ matrix.kube }}
+      - run: npm ci
+      - run: npm test
