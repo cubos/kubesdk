@@ -1,6 +1,10 @@
 import { AsyncLocalStorage } from "async_hooks";
 import Axios, { AxiosInstance } from "axios";
+import { readFileSync } from "fs";
 import { Agent } from "https";
+import { homedir } from "os";
+import { join } from "path";
+import { KubeConfig } from "./KubeConfig";
 
 interface ClusterConnectionOptions {
   paranoid: boolean;
@@ -39,26 +43,88 @@ export class ClusterConnection {
   public readonly options: Readonly<ClusterConnectionOptions>;
 
   constructor(
-    options: {
-      baseUrl: string;
-      token: string;
-      certificate?: Buffer;
-    } & Partial<ClusterConnectionOptions>
+    options: (
+      | {
+          baseUrl: string;
+          token: string;
+          certificate?: Buffer;
+        }
+      | {
+          kubeconfigPath?: string;
+          context?: string;
+        }
+    ) &
+      Partial<ClusterConnectionOptions> = {}
   ) {
-    this.client = Axios.create({
-      baseURL: options.baseUrl,
-      headers: {
-        Authorization: `Bearer ${options.token}`,
-        Accept: "application/json",
-      },
-      ...(options.certificate
-        ? {
-            httpsAgent: new Agent({
-              ca: options.certificate,
-            }),
-          }
-        : {}),
-    });
+    if ("baseUrl" in options) {
+      this.client = Axios.create({
+        baseURL: options.baseUrl,
+        headers: {
+          Authorization: `Bearer ${options.token}`,
+          Accept: "application/json",
+        },
+        ...(options.certificate
+          ? {
+              httpsAgent: new Agent({
+                ca: options.certificate,
+              }),
+            }
+          : {}),
+      });
+    } else {
+      const kubeconfig = readFileSync(
+        options.kubeconfigPath ??
+          process.env.KUBECONFIG ??
+          join(homedir(), ".kube", "config"),
+        "utf-8"
+      );
+
+      const config = new KubeConfig(kubeconfig);
+      const context = config.context(options.context);
+
+      this.client = Axios.create({
+        baseURL: context.cluster.server.toString(),
+        headers: {
+          ...(context.user.token
+            ? { Authorization: `Bearer ${context.user.token}` }
+            : {}),
+          ...(context.user.impersonateUser
+            ? { "Impersonate-User": context.user.impersonateUser }
+            : {}),
+          ...(context.user.impersonateGroups
+            ? { "Impersonate-Group": context.user.impersonateGroups }
+            : {}),
+          ...(context.user.impersonateExtra
+            ? Object.fromEntries(
+                [...context.user.impersonateExtra].map(([key, value]) => [
+                  `Impersonate-Extra-${key}`,
+                  value,
+                ])
+              )
+            : {}),
+          Accept: "application/json",
+        },
+        httpsAgent: new Agent({
+          ...(context.cluster.certificateAuthorityData
+            ? { ca: context.cluster.certificateAuthorityData }
+            : {}),
+          ...(context.user.clientCertificateData && context.user.clientKeyData
+            ? {
+                cert: context.user.clientCertificateData,
+                key: context.user.clientKeyData,
+              }
+            : {}),
+        }),
+        ...(context.user.username && context.user.password
+          ? {
+              auth: {
+                username: context.user.username,
+                password: context.user.password,
+              },
+            }
+          : {}),
+      });
+    }
 
     this.options = {
       paranoid: options.paranoid ?? true,
