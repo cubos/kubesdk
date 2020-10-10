@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node --loader ts-node/esm --experimental-specifier-resolution=node src/main.ts",
-    "test": "node spec/setup.js && KUBECONFIG=.spec-kubeconfig jest -w10"
+    "test": "$(node spec/setup.js) && jest -w10"
   },
   "keywords": [],
   "author": "",

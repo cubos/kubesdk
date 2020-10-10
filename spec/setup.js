@@ -51,6 +51,9 @@ if (!process.env.CI) {
     ".spec-kubeconfig",
     kind("get", "kubeconfig", "--name", clusterName)
   );
+
+  // See package.json
+  console.log("export KUBECONFIG=.spec-kubeconfig")
 }
 
 function setupStorageClass() {
