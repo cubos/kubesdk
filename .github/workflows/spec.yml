@@ -6,6 +6,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
+        node:
+          - 12
+          - 14
         kube:
           - kindest/node:v1.19.1@sha256:98cf5288864662e37115e362b23e4369c8c4a408f99cbc06e58ac30ddc721600
           - kindest/node:v1.18.8@sha256:f4bcc97a0ad6e7abaf3f643d890add7efe6ee4ab90baeb374b4f41a4c95567eb
@@ -15,7 +18,7 @@ jobs:
       - uses: actions/checkout@master
       - uses: actions/setup-node@v1
         with:
-          node-version: 14
+          node-version: ${{ matrix.node }}
       - uses: engineerd/setup-kind@v0.4.0
         with:
           version: "v0.9.0"
