@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from "async_hooks";
 import Axios, { AxiosInstance } from "axios";
+import * as AxiosLogger from "axios-logger";
 import { readFileSync } from "fs";
 import { Agent } from "https";
 import { homedir } from "os";
@@ -8,6 +9,7 @@ import { KubeConfig } from "./KubeConfig";
 
 interface ClusterConnectionOptions {
   paranoid: boolean;
+  logRequests: boolean;
   name: string;
 }
 
@@ -32,6 +34,7 @@ export class KubernetesError extends Error {
   }
 
   static NotFound = class NotFound extends KubernetesError {};
+  static Conflict = class Conflict extends KubernetesError {};
 }
 
 function rethrowError(e: any): never {
@@ -39,6 +42,8 @@ function rethrowError(e: any): never {
     switch (e.response.data.code) {
       case 404:
         throw new KubernetesError.NotFound(e.response.data);
+      case 409:
+        throw new KubernetesError.Conflict(e.response.data);
       default:
         console.error("Unhandled error code", e.response.data);
         throw new KubernetesError(e.response.data);
@@ -147,8 +152,13 @@ export class ClusterConnection {
 
     this.options = {
       paranoid: options.paranoid ?? true,
+      logRequests: options.logRequests ?? false,
       name: options.name ?? "kubeoperator",
     };
+
+    if (this.options.logRequests) {
+      this.client.interceptors.request.use(AxiosLogger.requestLogger);
+    }
   }
 
   use<T>(func: () => T) {
