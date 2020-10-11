@@ -26,6 +26,26 @@ describe("Namespace", () => {
     });
   });
 
+  test("create and delete", async () => {
+    await cluster.use(async () => {
+      const namespace = await Namespace.create({ generateName: "test-" });
+      const name = namespace.metadata.name;
+      expect(namespace.status.phase).toBe("Active");
+      const deleted = await namespace.delete();
+      expect(deleted.status.phase).toBe("Terminating");
+    });
+  });
+
+  test("delete non existing", async () => {
+    await cluster.use(async () => {
+      await expectThrows(
+        Namespace.delete("foo"),
+        KubernetesError.NotFound,
+        `namespaces "foo" not found`
+      );
+    });
+  });
+
   test("list", async () => {
     await cluster.use(async () => {
       const list = await Namespace.list();
@@ -69,7 +89,9 @@ describe("Namespace", () => {
         })
       ).toStrictEqual([modified]);
 
-      const deleted = await Namespace.delete(name);
+      await expectThrows(original.delete(), KubernetesError.Conflict);
+
+      const deleted = await modified.delete();
       expect(deleted.status.phase).toBe("Terminating");
     });
   });

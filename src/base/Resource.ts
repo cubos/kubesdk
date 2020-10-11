@@ -10,10 +10,10 @@ export interface CreatableMetadata {
 }
 
 export interface ExtraMetadata {
-  selfLink: string;
-  uid: string;
-  resourceVersion: string;
-  creationTimestamp: string;
+  readonly selfLink: string;
+  readonly uid: string;
+  readonly resourceVersion: string;
+  readonly creationTimestamp: string;
   finalizers?: string[];
 }
 
@@ -32,6 +32,35 @@ export class Resource<MetadataT, SpecT, StatusT> {
   protected static kind: string | null = null;
   protected static apiVersion: string | null = null;
   protected static apiPlural: string | null = null;
+  private static parseRawObject: (
+    conn: ClusterConnection,
+    obj: any
+  ) => Resource<any, any, any>;
+
+  protected parseRawObject(conn: ClusterConnection, obj: any): this {
+    return this.base.parseRawObject(conn, obj) as this;
+  }
+
+  private get base() {
+    return this.constructor as typeof Resource &
+      StaticResource<
+        MetadataT,
+        SpecT,
+        StatusT,
+        Resource<MetadataT, SpecT, StatusT>
+      >;
+  }
+
+  async delete() {
+    const conn = ClusterConnection.current();
+    const obj = await conn.delete(this.metadata.selfLink, {
+      preconditions: {
+        resourceVersion: this.metadata.resourceVersion,
+        uid: this.metadata.uid,
+      },
+    });
+    return this.parseRawObject(conn, obj);
+  }
 }
 
 type Selector = LabelSelector & {
@@ -45,6 +74,16 @@ export class NamespacedResource<MetadataT, SpecT, StatusT> extends Resource<
   StatusT
 > {
   protected static isNamespaced = true;
+
+  private get nsbase() {
+    return this.constructor as typeof NamespacedResource &
+      StaticNamespacedResource<
+        MetadataT & { namespace: string },
+        SpecT,
+        StatusT,
+        Resource<MetadataT & { namespace: string }, SpecT, StatusT>
+      >;
+  }
 }
 
 interface StaticResource<MetadataT, SpecT, StatusT, T> {
@@ -124,7 +163,7 @@ function implementStaticMethods(
     klass.apiPlural ??
     _throw(new Error(`Please specify 'apiPlural' for ${klass.name}`));
 
-  async function parseObject(conn: ClusterConnection, obj: any) {
+  async function parseRawObject(conn: ClusterConnection, obj: any) {
     if (conn.options.paranoid) {
       if (obj.kind !== kind || obj.apiVersion !== apiVersion) {
         throw new Error(
@@ -141,6 +180,8 @@ function implementStaticMethods(
 
     return new klass(obj.metadata, obj.spec || {}, obj.status || {});
   }
+
+  (klass as any).parseRawObject = parseRawObject;
 
   klass.get = async (namespaceOrName: string, name?: string) => {
     const conn = ClusterConnection.current();
@@ -159,7 +200,7 @@ function implementStaticMethods(
       url = `/${base}/${apiVersion}/${apiPlural}/${encodeURIComponent(name)}`;
     }
     const obj = await conn.get(url);
-    return await parseObject(conn, obj);
+    return await parseRawObject(conn, obj);
   };
 
   klass.delete = async (namespaceOrName: string, name?: string) => {
@@ -179,7 +220,7 @@ function implementStaticMethods(
       url = `/${base}/${apiVersion}/${apiPlural}/${encodeURIComponent(name)}`;
     }
     const obj = await conn.delete(url);
-    return await parseObject(conn, obj);
+    return await parseRawObject(conn, obj);
   };
 
   klass.list = async (
@@ -269,7 +310,7 @@ function implementStaticMethods(
 
     return await Promise.all(
       list.items.map((obj) =>
-        parseObject(conn, {
+        parseRawObject(conn, {
           kind: innerKind,
           apiVersion: list.apiVersion,
           ...obj,
@@ -302,7 +343,7 @@ function implementStaticMethods(
       metadata,
       spec: spec ?? {},
     });
-    return await parseObject(conn, obj);
+    return await parseRawObject(conn, obj);
   };
 
   (klass as StaticResource<any, any, any, Resource<any, any, any>> &
@@ -340,7 +381,7 @@ function implementStaticMethods(
         spec: spec ?? {},
       }
     );
-    return await parseObject(conn, obj);
+    return await parseRawObject(conn, obj);
   };
 }
 

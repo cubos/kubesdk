@@ -11,6 +11,17 @@ interface ClusterConnectionOptions {
   name: string;
 }
 
+interface DeleteOptions {
+  dryRun?: string[]; // ???
+  gracePeriodSeconds?: number;
+  orphanDependents?: boolean;
+  preconditions?: {
+    resourceVersion: string;
+    uid: string;
+  };
+  propagationPolicy?: "Orphan" | "Background" | "Foreground";
+}
+
 export class KubernetesError extends Error {
   public details: any;
   public code: number;
@@ -209,8 +220,24 @@ export class ClusterConnection {
     return res.data;
   }
 
-  async delete(url: string) {
-    const res = await this.client.delete(url).catch(rethrowError);
+  async delete(url: string, options?: DeleteOptions) {
+    // Axios 0.20.0 can't call delete() with body.
+    // Workaround: https://github.com/axios/axios/issues/3220#issuecomment-688566578
+    const res = await this.client
+      .request({
+        url,
+        method: "delete",
+        ...(options
+          ? {
+              data: {
+                ...options,
+                kind: "DeleteOptions",
+                apiVersion: "meta/v1",
+              },
+            }
+          : {}),
+      })
+      .catch(rethrowError);
     return res.data;
   }
 }
