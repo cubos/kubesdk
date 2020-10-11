@@ -1,5 +1,5 @@
-import { spawnSync } from "child_process";
-import { unlinkSync, writeFileSync } from "fs";
+const { spawnSync } = require("child_process");
+const { unlinkSync, writeFileSync } = require("fs");
 
 function rawKubectl(...args) {
   var result = spawnSync("kubectl", ["--kubeconfig=.spec-kubeconfig", ...args]);

@@ -1,10 +1,12 @@
+[![test status badge](https://github.com/lbguilherme/kubeoperator/workflows/Spec/badge.svg?branch=master)](https://github.com/lbguilherme/kubeoperator/actions)
+
 This library is a high-level strongly typed client for the Kubernetes API for dynamically managing objects. It also serves as an Operator runtime (see below).
 
 # Getting started
 
 ## Basic Usage
 
-Currently Node 14 is required (we use `AsyncLocalStorage` to keep the cluster connection). Make sure you have it.
+Currently Node 12.17.0+ is required (we use `AsyncLocalStorage` to keep the cluster connection). Make sure you have it.
 
 ```typescript
 // Configure a cluster connection:
