@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from "async_hooks";
-import Axios, { AxiosInstance } from "axios";
+import Axios, { AxiosInstance, AxiosRequestConfig } from "axios";
 import * as AxiosLogger from "axios-logger";
 import { readFileSync } from "fs";
 import { Agent } from "https";
@@ -27,10 +27,26 @@ interface DeleteOptions {
 export class KubernetesError extends Error {
   public details: any;
   public code: number;
-  constructor(obj: any) {
+  public retryAfter: number | null = null;
+
+  constructor(obj: any, retryAfterRaw: string | undefined) {
     super(obj.message);
     this.details = obj.details;
     this.code = obj.code;
+    if (retryAfterRaw) {
+      const retryAfterInt = parseInt(retryAfterRaw, 10);
+      if (retryAfterInt.toString() === retryAfterRaw.trim()) {
+        this.retryAfter = retryAfterInt * 1000;
+      }
+
+      const retryAfterDate = new Date(retryAfterRaw);
+      if (!isNaN(retryAfterDate.getTime())) {
+        this.retryAfter = Math.max(
+          0,
+          retryAfterDate.getTime() - new Date().getTime()
+        );
+      }
+    }
   }
 
   static BadRequest = class BadRequest extends KubernetesError {};
@@ -49,34 +65,50 @@ export class KubernetesError extends Error {
 
 function rethrowError(e: any): never {
   if (e?.response?.data?.message) {
+    const retryAfterRaw = e.response.headers?.["retry-after"];
     switch (e.response.data.code) {
       case 400:
-        throw new KubernetesError.BadRequest(e.response.data);
+        throw new KubernetesError.BadRequest(e.response.data, retryAfterRaw);
       case 401:
-        throw new KubernetesError.Unauthorized(e.response.data);
+        throw new KubernetesError.Unauthorized(e.response.data, retryAfterRaw);
       case 403:
-        throw new KubernetesError.Forbidden(e.response.data);
+        throw new KubernetesError.Forbidden(e.response.data, retryAfterRaw);
       case 404:
-        throw new KubernetesError.NotFound(e.response.data);
+        throw new KubernetesError.NotFound(e.response.data, retryAfterRaw);
       case 405:
-        throw new KubernetesError.MethodNotAllowed(e.response.data);
+        throw new KubernetesError.MethodNotAllowed(
+          e.response.data,
+          retryAfterRaw
+        );
       case 409:
-        throw new KubernetesError.Conflict(e.response.data);
+        throw new KubernetesError.Conflict(e.response.data, retryAfterRaw);
       case 410:
-        throw new KubernetesError.Gone(e.response.data);
+        throw new KubernetesError.Gone(e.response.data, retryAfterRaw);
       case 422:
-        throw new KubernetesError.UnprocessableEntity(e.response.data);
+        throw new KubernetesError.UnprocessableEntity(
+          e.response.data,
+          retryAfterRaw
+        );
       case 429:
-        throw new KubernetesError.TooManyRequests(e.response.data);
+        throw new KubernetesError.TooManyRequests(
+          e.response.data,
+          retryAfterRaw
+        );
       case 500:
-        throw new KubernetesError.InternalServerError(e.response.data);
+        throw new KubernetesError.InternalServerError(
+          e.response.data,
+          retryAfterRaw
+        );
       case 503:
-        throw new KubernetesError.ServiceUnavailable(e.response.data);
+        throw new KubernetesError.ServiceUnavailable(
+          e.response.data,
+          retryAfterRaw
+        );
       case 504:
-        throw new KubernetesError.ServerTimeout(e.response.data);
+        throw new KubernetesError.ServerTimeout(e.response.data, retryAfterRaw);
       default:
         console.error("Unhandled error code", e.response.data);
-        throw new KubernetesError(e.response.data);
+        throw new KubernetesError(e.response.data, retryAfterRaw);
     }
   }
   throw e;
@@ -231,40 +263,94 @@ export class ClusterConnection {
     return this.objectSchemaMapping.get(`/${apiVersion}/${kind}`);
   }
 
+  private async request(config: AxiosRequestConfig) {
+    function sleep(ms: number) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    let attempt = 0;
+    while (true) {
+      attempt += 1;
+      try {
+        return await this.client.request(config).catch(rethrowError);
+      } catch (err) {
+        if (attempt > 5) {
+          throw err;
+        }
+
+        if (
+          err instanceof KubernetesError.InternalServerError ||
+          err instanceof KubernetesError.ServiceUnavailable
+        ) {
+          await sleep(500 * Math.random() * Math.pow(2, attempt));
+          continue;
+        }
+
+        if (err instanceof KubernetesError.TooManyRequests) {
+          await sleep(
+            err.retryAfter ?? 500 * Math.random() * Math.pow(2, attempt)
+          );
+          continue;
+        }
+
+        throw err;
+      }
+    }
+  }
+
   async get(url: string) {
-    const res = await this.client.get(url).catch(rethrowError);
-    return res.data;
+    return (
+      await this.request({
+        url,
+        method: "get",
+      })
+    ).data;
   }
 
   async post(url: string, data: any) {
-    const res = await this.client.post(url, data).catch(rethrowError);
-    return res.data;
+    return (
+      await this.request({
+        url,
+        method: "post",
+        data,
+      })
+    ).data;
   }
 
   async put(url: string, data: any) {
-    const res = await this.client.put(url, data).catch(rethrowError);
-    return res.data;
+    return (
+      await this.request({
+        url,
+        method: "put",
+        data,
+      })
+    ).data;
   }
 
   async patch(url: string, data: any) {
-    const res = await this.client.patch(url, data).catch(rethrowError);
-    return res.data;
+    return (
+      await this.request({
+        url,
+        method: "patch",
+        data,
+      })
+    ).data;
   }
 
   async apply(url: string, data: any) {
-    const res = await this.client
-      .patch(url, data, {
+    return (
+      await this.request({
+        url,
+        method: "patch",
+        data,
         headers: { "Content-Type": "application/apply-patch+yaml" },
       })
-      .catch(rethrowError);
-    return res.data;
+    ).data;
   }
 
   async delete(url: string, options?: DeleteOptions) {
-    // Axios 0.20.0 can't call delete() with body.
-    // Workaround: https://github.com/axios/axios/issues/3220#issuecomment-688566578
-    const res = await this.client
-      .request({
+    return (
+      await this.request({
         url,
         method: "delete",
         ...(options
@@ -277,7 +363,6 @@ export class ClusterConnection {
             }
           : {}),
       })
-      .catch(rethrowError);
-    return res.data;
+    ).data;
   }
 }
