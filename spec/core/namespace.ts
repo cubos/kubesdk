@@ -43,4 +43,34 @@ describe("Namespace", () => {
       expect(list.length).toBe(2);
     });
   });
+
+  test("create, get, list, apply and delete", async () => {
+    await cluster.use(async () => {
+      const original = await Namespace.create({ generateName: "test-" });
+      const name = original.metadata.name;
+      expect(name).toStartWith("test-");
+      expect(await Namespace.get(name)).toStrictEqual(original);
+      expect(await Namespace.list()).toContainEqual(original);
+
+      const modified = await Namespace.apply({
+        name: name,
+        labels: { foo: name },
+      });
+      expect(modified.metadata.resourceVersion).not.toBe(
+        original.metadata.resourceVersion
+      );
+      expect(modified.metadata.labels).toEqual({ foo: name });
+      expect(await Namespace.get(name)).toStrictEqual(modified);
+      expect(await Namespace.list()).toContainEqual(modified);
+      expect(await Namespace.list()).not.toContainEqual(original);
+      expect(
+        await Namespace.list({
+          selector: { matchLabels: { foo: name } },
+        })
+      ).toStrictEqual([modified]);
+
+      const deleted = await Namespace.delete(name);
+      expect(deleted.status.phase).toBe("Terminating");
+    });
+  });
 });

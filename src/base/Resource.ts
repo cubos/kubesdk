@@ -49,6 +49,7 @@ export class NamespacedResource<MetadataT, SpecT, StatusT> extends Resource<
 
 interface StaticResource<MetadataT, SpecT, StatusT, T> {
   get(name: string): Promise<T>;
+  delete(name: string): Promise<T>;
   list(options?: { selector?: Selector; limit?: number }): Promise<T[]>;
   create: {} extends SpecT
     ? (
@@ -70,6 +71,7 @@ interface StaticResource<MetadataT, SpecT, StatusT, T> {
 
 interface StaticNamespacedResource<MetadataT, SpecT, StatusT, T> {
   get(namespace: string, name: string): Promise<T>;
+  delete(namespace: string, name: string): Promise<T>;
   list(options?: {
     namespace?: string;
     selector?: Selector;
@@ -157,6 +159,26 @@ function implementStaticMethods(
       url = `/${base}/${apiVersion}/${apiPlural}/${encodeURIComponent(name)}`;
     }
     const obj = await conn.get(url);
+    return await parseObject(conn, obj);
+  };
+
+  klass.delete = async (namespaceOrName: string, name?: string) => {
+    const conn = ClusterConnection.current();
+    const base = apiVersion.includes("/") ? `apis` : "api";
+    let url;
+    if (klass.isNamespaced) {
+      const namespace = namespaceOrName;
+      if (!name) {
+        throw new Error("Expected to receive resource name");
+      }
+      url = `/${base}/${apiVersion}/namespaces/${encodeURIComponent(
+        namespace
+      )}/${apiPlural}/${encodeURIComponent(name)}`;
+    } else {
+      name = namespaceOrName;
+      url = `/${base}/${apiVersion}/${apiPlural}/${encodeURIComponent(name)}`;
+    }
+    const obj = await conn.delete(url);
     return await parseObject(conn, obj);
   };
 

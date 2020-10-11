@@ -208,4 +208,9 @@ export class ClusterConnection {
       .catch(rethrowError);
     return res.data;
   }
+
+  async delete(url: string) {
+    const res = await this.client.delete(url).catch(rethrowError);
+    return res.data;
+  }
 }
