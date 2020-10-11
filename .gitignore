@@ -1,3 +1,4 @@
 node_modules
 openapi.json
 .spec-kubeconfig
+coverage

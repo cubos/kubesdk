@@ -19,11 +19,19 @@ export class KubernetesError extends Error {
     this.details = obj.details;
     this.code = obj.code;
   }
+
+  static NotFound = class NotFound extends KubernetesError {};
 }
 
 function rethrowError(e: any): never {
   if (e?.response?.data?.message) {
-    throw new KubernetesError(e.response.data);
+    switch (e.response.data.code) {
+      case 404:
+        throw new KubernetesError.NotFound(e.response.data);
+      default:
+        console.error("Unhandled error code", e.response.data);
+        throw new KubernetesError(e.response.data);
+    }
   }
   throw e;
 }

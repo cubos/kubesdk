@@ -1,5 +1,10 @@
-import { ClusterConnection } from "../../src/base/ClusterConnection";
+import "jest-extended";
+import {
+  ClusterConnection,
+  KubernetesError,
+} from "../../src/base/ClusterConnection";
 import { Namespace } from "../../src/core/Namespace";
+import { expectThrows } from "../utils";
 
 const cluster = new ClusterConnection();
 
@@ -8,6 +13,16 @@ describe("Namespace", () => {
     await cluster.use(async () => {
       const ns = await Namespace.get("kube-system");
       expect(ns.metadata.name).toBe("kube-system");
+    });
+  });
+
+  test("get non existing", async () => {
+    await cluster.use(async () => {
+      await expectThrows(
+        Namespace.get("foo"),
+        KubernetesError.NotFound,
+        `namespaces "foo" not found`
+      );
     });
   });
 

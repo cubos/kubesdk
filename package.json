@@ -12,14 +12,17 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "ajv": "^6.12.5",
+    "axios": "^0.20.0",
+    "js-yaml": "^3.14.0"
+  },
+  "devDependencies": {
     "@types/axios": "^0.14.0",
     "@types/jest": "^26.0.14",
     "@types/js-yaml": "^3.12.5",
     "@types/node": "^14.11.2",
-    "ajv": "^6.12.5",
-    "axios": "^0.20.0",
     "jest": "^26.5.2",
-    "js-yaml": "^3.14.0",
+    "jest-extended": "^0.11.5",
     "ts-jest": "^26.4.1",
     "ts-node": "^9.0.0",
     "typescript": "^4.0.3"
@@ -34,9 +37,17 @@
       "**/spec/**/*.ts"
     ],
     "testPathIgnorePatterns": [
-      "<rootDir>/spec/setup.ts"
+      "<rootDir>/spec/utils.ts"
     ],
     "verbose": true,
-    "testTimeout": 60000
+    "testTimeout": 60000,
+    "collectCoverage": true,
+    "coverageReporters": [
+      "text",
+      "lcov"
+    ],
+    "setupFilesAfterEnv": [
+      "jest-extended"
+    ]
   }
 }
