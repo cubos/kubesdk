@@ -33,17 +33,47 @@ export class KubernetesError extends Error {
     this.code = obj.code;
   }
 
+  static BadRequest = class BadRequest extends KubernetesError {};
+  static Unauthorized = class Unauthorized extends KubernetesError {};
+  static Forbidden = class Forbidden extends KubernetesError {};
   static NotFound = class NotFound extends KubernetesError {};
+  static MethodNotAllowed = class MethodNotAllowed extends KubernetesError {};
   static Conflict = class Conflict extends KubernetesError {};
+  static Gone = class Gone extends KubernetesError {};
+  static UnprocessableEntity = class UnprocessableEntity extends KubernetesError {};
+  static TooManyRequests = class TooManyRequests extends KubernetesError {};
+  static InternalServerError = class InternalServerError extends KubernetesError {};
+  static ServiceUnavailable = class ServiceUnavailable extends KubernetesError {};
+  static ServerTimeout = class ServerTimeout extends KubernetesError {};
 }
 
 function rethrowError(e: any): never {
   if (e?.response?.data?.message) {
     switch (e.response.data.code) {
+      case 400:
+        throw new KubernetesError.BadRequest(e.response.data);
+      case 401:
+        throw new KubernetesError.Unauthorized(e.response.data);
+      case 403:
+        throw new KubernetesError.Forbidden(e.response.data);
       case 404:
         throw new KubernetesError.NotFound(e.response.data);
+      case 405:
+        throw new KubernetesError.MethodNotAllowed(e.response.data);
       case 409:
         throw new KubernetesError.Conflict(e.response.data);
+      case 410:
+        throw new KubernetesError.Gone(e.response.data);
+      case 422:
+        throw new KubernetesError.UnprocessableEntity(e.response.data);
+      case 429:
+        throw new KubernetesError.TooManyRequests(e.response.data);
+      case 500:
+        throw new KubernetesError.InternalServerError(e.response.data);
+      case 503:
+        throw new KubernetesError.ServiceUnavailable(e.response.data);
+      case 504:
+        throw new KubernetesError.ServerTimeout(e.response.data);
       default:
         console.error("Unhandled error code", e.response.data);
         throw new KubernetesError(e.response.data);
