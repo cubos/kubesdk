@@ -32,13 +32,17 @@ export class Resource<MetadataT, SpecT, StatusT> {
   protected static kind: string | null = null;
   protected static apiVersion: string | null = null;
   protected static apiPlural: string | null = null;
+
   private static parseRawObject: (
     conn: ClusterConnection,
     obj: any
-  ) => Resource<any, any, any>;
+  ) => Promise<Resource<any, any, any>>;
 
-  protected parseRawObject(conn: ClusterConnection, obj: any): this {
-    return this.base.parseRawObject(conn, obj) as this;
+  protected async parseRawObject(
+    conn: ClusterConnection,
+    obj: any
+  ): Promise<this> {
+    return (await this.base.parseRawObject(conn, obj)) as this;
   }
 
   private get base() {
@@ -53,13 +57,44 @@ export class Resource<MetadataT, SpecT, StatusT> {
 
   async delete() {
     const conn = ClusterConnection.current();
-    const obj = await conn.delete(this.metadata.selfLink, {
+    const raw = await conn.delete(this.metadata.selfLink, {
       preconditions: {
         resourceVersion: this.metadata.resourceVersion,
         uid: this.metadata.uid,
       },
     });
-    return this.parseRawObject(conn, obj);
+    return await this.parseRawObject(conn, raw);
+  }
+
+  async reload() {
+    const conn = ClusterConnection.current();
+    const raw = await conn.get(this.metadata.selfLink);
+    const obj = await this.parseRawObject(conn, raw);
+    this.metadata = obj.metadata;
+    this.spec = obj.spec;
+    this.status = obj.status;
+  }
+
+  async save() {
+    const kind =
+      this.base.kind ??
+      _throw(new Error(`Please specify 'kind' for ${this.base.name}`));
+    const apiVersion =
+      this.base.apiVersion ??
+      _throw(new Error(`Please specify 'apiVersion' for ${this.base.name}`));
+
+    const conn = ClusterConnection.current();
+    const raw = await conn.put(this.metadata.selfLink, {
+      apiVersion,
+      kind,
+      metadata: this.metadata,
+      spec: this.spec,
+      status: this.status,
+    });
+    const obj = await this.parseRawObject(conn, raw);
+    this.metadata = obj.metadata;
+    this.spec = obj.spec;
+    this.status = obj.status;
   }
 }
 
@@ -199,8 +234,8 @@ function implementStaticMethods(
       name = namespaceOrName;
       url = `/${base}/${apiVersion}/${apiPlural}/${encodeURIComponent(name)}`;
     }
-    const obj = await conn.get(url);
-    return await parseRawObject(conn, obj);
+    const raw = await conn.get(url);
+    return await parseRawObject(conn, raw);
   };
 
   klass.delete = async (namespaceOrName: string, name?: string) => {
@@ -219,8 +254,8 @@ function implementStaticMethods(
       name = namespaceOrName;
       url = `/${base}/${apiVersion}/${apiPlural}/${encodeURIComponent(name)}`;
     }
-    const obj = await conn.delete(url);
-    return await parseRawObject(conn, obj);
+    const raw = await conn.delete(url);
+    return await parseRawObject(conn, raw);
   };
 
   klass.list = async (
@@ -309,11 +344,11 @@ function implementStaticMethods(
     const innerKind = list.kind.replace(/List$/, "");
 
     return await Promise.all(
-      list.items.map((obj) =>
+      list.items.map((raw) =>
         parseRawObject(conn, {
           kind: innerKind,
           apiVersion: list.apiVersion,
-          ...obj,
+          ...raw,
         })
       )
     );
@@ -337,13 +372,13 @@ function implementStaticMethods(
     } else {
       url = `/${base}/${apiVersion}/${apiPlural}`;
     }
-    const obj = await conn.post(url, {
+    const raw = await conn.post(url, {
       apiVersion,
       kind,
       metadata,
       spec: spec ?? {},
     });
-    return await parseRawObject(conn, obj);
+    return await parseRawObject(conn, raw);
   };
 
   (klass as StaticResource<any, any, any, Resource<any, any, any>> &
@@ -370,7 +405,7 @@ function implementStaticMethods(
     } else {
       url = `/${base}/${apiVersion}/${apiPlural}`;
     }
-    const obj = await conn.apply(
+    const raw = await conn.apply(
       `${url}/${metadata.name}?fieldManager=${encodeURIComponent(
         conn.options.name
       )}&force=true`,
@@ -381,7 +416,7 @@ function implementStaticMethods(
         spec: spec ?? {},
       }
     );
-    return await parseRawObject(conn, obj);
+    return await parseRawObject(conn, raw);
   };
 }
 

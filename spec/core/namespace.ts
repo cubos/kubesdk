@@ -95,4 +95,30 @@ describe("Namespace", () => {
       expect(deleted.status.phase).toBe("Terminating");
     });
   });
+
+  test("optimistic concurrency", async () => {
+    await cluster.use(async () => {
+      const original = await Namespace.create({ generateName: "test-" });
+      const name = original.metadata.name;
+      const another = await Namespace.get(name);
+
+      original.metadata.annotations = { hi: "there" };
+      await original.save();
+
+      expect(original.metadata.resourceVersion).not.toBe(
+        another.metadata.resourceVersion
+      );
+      expect(await Namespace.get(name)).toMatchObject({
+        metadata: { annotations: { hi: "there" } },
+      });
+
+      another.metadata.annotations = { hello: "here" };
+      await expectThrows(another.save(), KubernetesError.Conflict);
+      await another.reload();
+      expect(another).toMatchObject({
+        metadata: { annotations: { hi: "there" } },
+      });
+      await another.delete();
+    });
+  });
 });
