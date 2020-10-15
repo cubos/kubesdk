@@ -5,7 +5,10 @@ import { readFileSync } from "fs";
 import { Agent } from "https";
 import { homedir } from "os";
 import { join } from "path";
+import WebSocket from "ws";
+import { sleep } from "../utils";
 import { KubeConfig } from "./KubeConfig";
+import { KubernetesError } from "./KubernetesError";
 
 interface ClusterConnectionOptions {
   paranoid: boolean;
@@ -24,92 +27,11 @@ interface DeleteOptions {
   propagationPolicy?: "Orphan" | "Background" | "Foreground";
 }
 
-export class KubernetesError extends Error {
-  public details: any;
-  public code: number;
-  public retryAfter: number | null = null;
-
-  constructor(obj: any, retryAfterRaw: string | undefined) {
-    super(obj.message);
-    this.details = obj.details;
-    this.code = obj.code;
-    if (retryAfterRaw) {
-      const retryAfterInt = parseInt(retryAfterRaw, 10);
-      if (retryAfterInt.toString() === retryAfterRaw.trim()) {
-        this.retryAfter = retryAfterInt * 1000;
-      }
-
-      const retryAfterDate = new Date(retryAfterRaw);
-      if (!isNaN(retryAfterDate.getTime())) {
-        this.retryAfter = Math.max(
-          0,
-          retryAfterDate.getTime() - new Date().getTime()
-        );
-      }
-    }
-  }
-
-  static BadRequest = class BadRequest extends KubernetesError {};
-  static Unauthorized = class Unauthorized extends KubernetesError {};
-  static Forbidden = class Forbidden extends KubernetesError {};
-  static NotFound = class NotFound extends KubernetesError {};
-  static MethodNotAllowed = class MethodNotAllowed extends KubernetesError {};
-  static Conflict = class Conflict extends KubernetesError {};
-  static Gone = class Gone extends KubernetesError {};
-  static UnprocessableEntity = class UnprocessableEntity extends KubernetesError {};
-  static TooManyRequests = class TooManyRequests extends KubernetesError {};
-  static InternalServerError = class InternalServerError extends KubernetesError {};
-  static ServiceUnavailable = class ServiceUnavailable extends KubernetesError {};
-  static ServerTimeout = class ServerTimeout extends KubernetesError {};
-}
-
 function rethrowError(e: any): never {
-  if (e?.response?.data?.message) {
+  if (e?.response?.data && typeof e.response.data === "object") {
     const retryAfterRaw = e.response.headers?.["retry-after"];
-    switch (e.response.data.code) {
-      case 400:
-        throw new KubernetesError.BadRequest(e.response.data, retryAfterRaw);
-      case 401:
-        throw new KubernetesError.Unauthorized(e.response.data, retryAfterRaw);
-      case 403:
-        throw new KubernetesError.Forbidden(e.response.data, retryAfterRaw);
-      case 404:
-        throw new KubernetesError.NotFound(e.response.data, retryAfterRaw);
-      case 405:
-        throw new KubernetesError.MethodNotAllowed(
-          e.response.data,
-          retryAfterRaw
-        );
-      case 409:
-        throw new KubernetesError.Conflict(e.response.data, retryAfterRaw);
-      case 410:
-        throw new KubernetesError.Gone(e.response.data, retryAfterRaw);
-      case 422:
-        throw new KubernetesError.UnprocessableEntity(
-          e.response.data,
-          retryAfterRaw
-        );
-      case 429:
-        throw new KubernetesError.TooManyRequests(
-          e.response.data,
-          retryAfterRaw
-        );
-      case 500:
-        throw new KubernetesError.InternalServerError(
-          e.response.data,
-          retryAfterRaw
-        );
-      case 503:
-        throw new KubernetesError.ServiceUnavailable(
-          e.response.data,
-          retryAfterRaw
-        );
-      case 504:
-        throw new KubernetesError.ServerTimeout(e.response.data, retryAfterRaw);
-      default:
-        console.error("Unhandled error code", e.response.data);
-        throw new KubernetesError(e.response.data, retryAfterRaw);
-    }
+    e.response.data.code ??= e.response.status;
+    throw KubernetesError.fromStatus(e.response.data, retryAfterRaw);
   }
   throw e;
 }
@@ -147,7 +69,6 @@ export class ClusterConnection {
         baseURL: options.baseUrl,
         headers: {
           Authorization: `Bearer ${options.token}`,
-          Accept: "application/json",
         },
         ...(options.certificate
           ? {
@@ -173,6 +94,12 @@ export class ClusterConnection {
         headers: {
           ...(context.user.token
             ? { Authorization: `Bearer ${context.user.token}` }
+            : context.user.username && context.user.password
+            ? {
+                Authorization: `Basic ${Buffer.from(
+                  `${context.user.username}:${context.user.password}`
+                ).toString("base64")}`,
+              }
             : {}),
           ...(context.user.impersonateUser
             ? { "Impersonate-User": context.user.impersonateUser }
@@ -188,7 +115,6 @@ export class ClusterConnection {
                 ])
               )
             : {}),
-          Accept: "application/json",
         },
         httpsAgent: new Agent({
           ...(context.cluster.certificateAuthorityData
@@ -201,14 +127,6 @@ export class ClusterConnection {
               }
             : {}),
         }),
-        ...(context.user.username && context.user.password
-          ? {
-              auth: {
-                username: context.user.username,
-                password: context.user.password,
-              },
-            }
-          : {}),
       });
     }
 
@@ -264,10 +182,6 @@ export class ClusterConnection {
   }
 
   private async request(config: AxiosRequestConfig) {
-    function sleep(ms: number) {
-      return new Promise((resolve) => setTimeout(resolve, ms));
-    }
-
     let attempt = 0;
     while (true) {
       attempt += 1;
@@ -364,5 +278,46 @@ export class ClusterConnection {
           : {}),
       })
     ).data;
+  }
+
+  async websocket(url: string) {
+    return new Promise<WebSocket>((resolve, reject) => {
+      const wsUrl = (
+        this.client.defaults.baseURL?.replace(/\/$/, "") + url
+      ).replace(/^http/, "ws");
+      const ws = new WebSocket(wsUrl, ["v4.channel.k8s.io"], {
+        headers: this.client.defaults.headers,
+        agent: this.client.defaults.httpsAgent,
+      });
+      const errorHandler = (err: Error) => {
+        reject(err);
+      };
+      ws.on("open", () => {
+        ws.removeListener("error", errorHandler);
+        resolve(ws);
+      });
+      ws.on("error", errorHandler);
+      ws.on("unexpected-response", (req, res) => {
+        const data: Buffer[] = [];
+        res.on("data", (chunk) => data.push(chunk));
+        res.on("end", () => {
+          let parsed = {};
+          try {
+            parsed = JSON.parse(Buffer.concat(data).toString());
+          } catch (e) {}
+          try {
+            rethrowError({
+              response: {
+                headers: res.headers,
+                status: res.statusCode,
+                data: parsed,
+              },
+            });
+          } catch (e) {
+            reject(e);
+          }
+        });
+      });
+    });
   }
 }

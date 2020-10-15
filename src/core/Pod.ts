@@ -1,3 +1,5 @@
+import { ClusterConnection } from "../base/ClusterConnection";
+import { Exec, ExecOptions } from "../base/Exec";
 import { NamespacedResource, wrapNamespacedResource } from "../base/Resource";
 import { LabelSelector } from "./types";
 
@@ -267,6 +269,34 @@ const _class = class Pod extends NamespacedResource<
   protected static kind = "Pod";
   protected static apiPlural = "pods";
   protected static apiVersion = "v1";
+
+  exec(
+    containerName: string,
+    command: string[],
+    options: ExecOptions
+  ): Promise<Exec>;
+  exec(
+    containerName: string,
+    command: string[]
+  ): Promise<{
+    stdout: Buffer;
+    stderr: Buffer;
+  }>;
+  async exec(containerName: string, command: string[], options?: ExecOptions) {
+    const conn = await ClusterConnection.current().websocket(
+      this.metadata.selfLink +
+        `/exec?container=${encodeURIComponent(
+          containerName
+        )}&command=${command
+          .map((x) => encodeURIComponent(x))
+          .join("&command=")}&stdin=1&stdout=1&stderr=1`
+    );
+    if (options) {
+      return new Exec(conn, options);
+    } else {
+      return Exec.asPromise(conn);
+    }
+  }
 };
 
 export const Pod = wrapNamespacedResource<

@@ -1,14 +1,18 @@
 const { spawnSync } = require("child_process");
 const { unlinkSync, writeFileSync } = require("fs");
 
-function rawKubectl(...args) {
-  var result = spawnSync("kubectl", ["--kubeconfig=.spec-kubeconfig", ...args]);
+function run(cmd, ...args) {
+  const result = spawnSync(cmd, args);
 
   if (result.status === 0) {
     return result.stdout.toString();
   } else {
     throw new Error(result.stderr.toString());
   }
+}
+
+function rawKubectl(...args) {
+  return run("kubectl", "--kubeconfig=.spec-kubeconfig", ...args);
 }
 
 function kubectl(...args) {
@@ -30,23 +34,21 @@ function apply({ yaml }) {
 }
 
 function kind(...args) {
-  var result = spawnSync("kind", args);
-
-  if (result.status === 0) {
-    return result.stdout.toString().trim();
-  } else {
-    throw new Error(result.stderr.toString().trim());
-  }
+  return run("kind", ...args);
 }
 
 if (!process.env.CI) {
   const clusters = kind("get", "clusters").split("\n");
-  let clusterName = "kube-templates-test";
+  let clusterName = "kubeoperator-spec";
   if (!clusters.includes(clusterName)) {
     kind("create", "cluster", "--name", clusterName, "--wait", "1m");
     setupStorageClass();
     clusters.push(clusterName);
+
+    run("docker", "pull", "busybox");
+    kind("load", "docker-image", "busybox", "--name", clusterName);
   }
+
   writeFileSync(
     ".spec-kubeconfig",
     kind("get", "kubeconfig", "--name", clusterName)

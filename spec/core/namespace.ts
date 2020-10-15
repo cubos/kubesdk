@@ -1,8 +1,6 @@
 import "jest-extended";
-import {
-  ClusterConnection,
-  KubernetesError,
-} from "../../src/base/ClusterConnection";
+import { ClusterConnection } from "../../src/base/ClusterConnection";
+import { KubernetesError } from "../../src/base/KubernetesError";
 import { Namespace } from "../../src/core/Namespace";
 import { expectThrows } from "../utils";
 

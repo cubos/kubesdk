@@ -14,13 +14,15 @@
     "ajv": "^6.12.5",
     "axios": "^0.20.0",
     "axios-logger": "^2.4.0",
-    "js-yaml": "^3.14.0"
+    "js-yaml": "^3.14.0",
+    "ws": "^7.3.1"
   },
   "devDependencies": {
     "@types/axios": "^0.14.0",
     "@types/jest": "^26.0.14",
     "@types/js-yaml": "^3.12.5",
     "@types/node": "^14.11.2",
+    "@types/ws": "^7.2.7",
     "jest": "^26.5.2",
     "jest-extended": "^0.11.5",
     "ts-jest": "^26.4.1",

@@ -18,3 +18,7 @@ export function validate(schema: object, data: any) {
 export function _throw(error: Error): never {
   throw error;
 }
+
+export function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
