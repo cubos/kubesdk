@@ -43,14 +43,10 @@ function rethrowError(e: Error | AxiosError): never {
 export class ClusterConnection {
   static asyncLocalStorage = new AsyncLocalStorage<ClusterConnection>();
 
+  static defaultConnection = new ClusterConnection();
+
   static current() {
-    const current = this.asyncLocalStorage.getStore();
-
-    if (!current) {
-      throw new Error("Expected to have a ClusterConnection in this context");
-    }
-
-    return current;
+    return this.asyncLocalStorage.getStore() ?? this.defaultConnection;
   }
 
   private client: AxiosInstance;
