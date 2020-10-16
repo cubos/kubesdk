@@ -183,9 +183,9 @@ export class ClusterConnection {
             continue;
           }
 
-          const key = `${has(entry, "group") && typeof entry.group === "string" ? `/${entry.group}/` : "/"}${
-            entry.version
-          }/${entry.kind}`;
+          const key = `${
+            has(entry, "group") && typeof entry.group === "string" && entry.group ? `/${entry.group}/` : "/"
+          }${entry.version}/${entry.kind}`;
 
           this.objectSchemaMapping.set(key, {
             $ref: `#/definitions/${name}`,
