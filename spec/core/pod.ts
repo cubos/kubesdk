@@ -32,5 +32,7 @@ describe("Pod", () => {
 
     expect(stdout.toString()).toBe("hello!\n");
     expect(stderr).toHaveLength(0);
+
+    await pod.delete();
   });
 });
