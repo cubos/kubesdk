@@ -1,7 +1,19 @@
-name: "Spec"
+name: "spec"
 on: [pull_request, push]
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 14
+      - run: npm ci
+      - run: npx tsc -noEmit
+      - run: npm run eslint:check
+      - run: npm run prettier:check
+
   spec:
     runs-on: ubuntu-latest
     strategy:
@@ -15,7 +27,7 @@ jobs:
           - kindest/node:v1.17.11@sha256:5240a7a2c34bf241afb54ac05669f8a46661912eab05705d660971eeb12f6555
           - kindest/node:v1.16.15@sha256:a89c771f7de234e6547d43695c7ab047809ffc71a0c3b65aa54eda051c45ed20
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v2
       - uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node }}

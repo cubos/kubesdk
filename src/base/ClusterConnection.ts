@@ -1,12 +1,13 @@
 import { AsyncLocalStorage } from "async_hooks";
-import Axios, { AxiosInstance, AxiosRequestConfig } from "axios";
+import Axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from "axios";
 import * as AxiosLogger from "axios-logger";
 import { readFileSync } from "fs";
+import { OutgoingHttpHeaders } from "http";
 import { Agent } from "https";
 import { homedir } from "os";
 import { join } from "path";
 import WebSocket from "ws";
-import { sleep } from "../utils";
+import { has, sleep } from "../utils";
 import { KubeConfig } from "./KubeConfig";
 import { KubernetesError } from "./KubernetesError";
 
@@ -27,12 +28,15 @@ interface DeleteOptions {
   propagationPolicy?: "Orphan" | "Background" | "Foreground";
 }
 
-function rethrowError(e: any): never {
-  if (e?.response?.data && typeof e.response.data === "object") {
-    const retryAfterRaw = e.response.headers?.["retry-after"];
-    e.response.data.code ??= e.response.status;
-    throw KubernetesError.fromStatus(e.response.data, retryAfterRaw);
+function rethrowError(e: Error | AxiosError): never {
+  if ("response" in e && e.response) {
+    const retryAfterRaw = (e.response.headers as Record<string, string>)["retry-after"];
+    const data = e.response.data as Record<string, unknown>;
+
+    data.code ??= e.response.status;
+    throw KubernetesError.fromStatus(data, retryAfterRaw);
   }
+
   throw e;
 }
 
@@ -41,13 +45,16 @@ export class ClusterConnection {
 
   static current() {
     const current = this.asyncLocalStorage.getStore();
+
     if (!current) {
       throw new Error("Expected to have a ClusterConnection in this context");
     }
+
     return current;
   }
 
   private client: AxiosInstance;
+
   public readonly options: Readonly<ClusterConnectionOptions>;
 
   constructor(
@@ -62,7 +69,7 @@ export class ClusterConnection {
           context?: string;
         }
     ) &
-      Partial<ClusterConnectionOptions> = {}
+      Partial<ClusterConnectionOptions> = {},
   ) {
     if ("baseUrl" in options) {
       this.client = Axios.create({
@@ -80,46 +87,42 @@ export class ClusterConnection {
       });
     } else {
       const kubeconfig = readFileSync(
-        options.kubeconfigPath ??
-          process.env.KUBECONFIG ??
-          join(homedir(), ".kube", "config"),
-        "utf-8"
+        options.kubeconfigPath ?? process.env.KUBECONFIG ?? join(homedir(), ".kube", "config"),
+        "utf-8",
       );
 
       const config = new KubeConfig(kubeconfig);
       const context = config.context(options.context);
 
+      const headers = {} as Record<string, string | string[]>;
+
+      if (context.user.token) {
+        headers.Authorization = `Bearer ${context.user.token}`;
+      } else if (context.user.username && context.user.password) {
+        headers.Authorization = `Basic ${Buffer.from(`${context.user.username}:${context.user.password}`).toString(
+          "base64",
+        )}`;
+      }
+
+      if (context.user.impersonateUser) {
+        headers["Impersonate-User"] = context.user.impersonateUser;
+      }
+
+      if (context.user.impersonateGroups) {
+        headers["Impersonate-Group"] = context.user.impersonateGroups;
+      }
+
+      if (context.user.impersonateExtra) {
+        for (const [key, value] of context.user.impersonateExtra) {
+          headers[`Impersonate-Extra-${key}`] = value;
+        }
+      }
+
       this.client = Axios.create({
         baseURL: context.cluster.server.toString(),
-        headers: {
-          ...(context.user.token
-            ? { Authorization: `Bearer ${context.user.token}` }
-            : context.user.username && context.user.password
-            ? {
-                Authorization: `Basic ${Buffer.from(
-                  `${context.user.username}:${context.user.password}`
-                ).toString("base64")}`,
-              }
-            : {}),
-          ...(context.user.impersonateUser
-            ? { "Impersonate-User": context.user.impersonateUser }
-            : {}),
-          ...(context.user.impersonateGroups
-            ? { "Impersonate-Group": context.user.impersonateGroups }
-            : {}),
-          ...(context.user.impersonateExtra
-            ? Object.fromEntries(
-                [...context.user.impersonateExtra].map(([key, value]) => [
-                  `Impersonate-Extra-${key}`,
-                  value,
-                ])
-              )
-            : {}),
-        },
+        headers,
         httpsAgent: new Agent({
-          ...(context.cluster.certificateAuthorityData
-            ? { ca: context.cluster.certificateAuthorityData }
-            : {}),
+          ...(context.cluster.certificateAuthorityData ? { ca: context.cluster.certificateAuthorityData } : {}),
           ...(context.user.clientCertificateData && context.user.clientKeyData
             ? {
                 cert: context.user.clientCertificateData,
@@ -145,25 +148,45 @@ export class ClusterConnection {
     return ClusterConnection.asyncLocalStorage.run(this, func);
   }
 
-  private getOpenApi = () => {
-    const result = this.client.get("/openapi/v2").then((res) => res.data);
+  private getOpenApi = async () => {
+    const result = this.client.get<Record<string, unknown>>("/openapi/v2").then(res => res.data);
     const previous = this.getOpenApi;
-    this.getOpenApi = () => result;
+
+    this.getOpenApi = async () => result;
     result.catch(() => (this.getOpenApi = previous));
     return result;
   };
 
-  private objectSchemaMapping = new Map<string, object>();
+  private objectSchemaMapping = new Map<string, unknown>();
+
   private async buildObjectSchemaMapping() {
-    const openApi: any = await this.getOpenApi();
-    for (const name in openApi.definitions) {
-      const definition = openApi.definitions[name];
+    const openApi = await this.getOpenApi();
+
+    if (!has(openApi, "definitions") || typeof openApi.definitions !== "object" || openApi.definitions === null) {
+      return;
+    }
+
+    for (const [name, definition] of Object.entries(openApi.definitions)) {
+      if (!has(definition, "x-kubernetes-group-version-kind")) {
+        continue;
+      }
+
       const list = definition["x-kubernetes-group-version-kind"];
+
       if (list && Array.isArray(list)) {
         for (const entry of list) {
-          const key =
-            (entry.group ? `/${entry.group}/` : "/") +
-            `${entry.version}/${entry.kind}`;
+          if (!has(entry, "version") || typeof entry.version !== "string") {
+            continue;
+          }
+
+          if (!has(entry, "kind") || typeof entry.kind !== "string") {
+            continue;
+          }
+
+          const key = `${has(entry, "group") && typeof entry.group === "string" ? `/${entry.group}/` : "/"}${
+            entry.version
+          }/${entry.kind}`;
+
           this.objectSchemaMapping.set(key, {
             $ref: `#/definitions/${name}`,
             definitions: openApi.definitions,
@@ -181,29 +204,25 @@ export class ClusterConnection {
     return this.objectSchemaMapping.get(`/${apiVersion}/${kind}`);
   }
 
-  private async request(config: AxiosRequestConfig) {
+  private async request<T = object>(config: AxiosRequestConfig) {
     let attempt = 0;
-    while (true) {
+
+    for (;;) {
       attempt += 1;
       try {
-        return await this.client.request(config).catch(rethrowError);
+        return await this.client.request<T>(config).catch(rethrowError);
       } catch (err) {
         if (attempt > 5) {
           throw err;
         }
 
-        if (
-          err instanceof KubernetesError.InternalServerError ||
-          err instanceof KubernetesError.ServiceUnavailable
-        ) {
+        if (err instanceof KubernetesError.InternalServerError || err instanceof KubernetesError.ServiceUnavailable) {
           await sleep(500 * Math.random() * Math.pow(2, attempt));
           continue;
         }
 
         if (err instanceof KubernetesError.TooManyRequests) {
-          await sleep(
-            err.retryAfter ?? 500 * Math.random() * Math.pow(2, attempt)
-          );
+          await sleep(err.retryAfter ?? 500 * Math.random() * Math.pow(2, attempt));
           continue;
         }
 
@@ -212,18 +231,18 @@ export class ClusterConnection {
     }
   }
 
-  async get(url: string) {
+  async get<T = object>(url: string) {
     return (
-      await this.request({
+      await this.request<T>({
         url,
         method: "get",
       })
     ).data;
   }
 
-  async post(url: string, data: any) {
+  async post<T = object>(url: string, data: unknown) {
     return (
-      await this.request({
+      await this.request<T>({
         url,
         method: "post",
         data,
@@ -231,9 +250,9 @@ export class ClusterConnection {
     ).data;
   }
 
-  async put(url: string, data: any) {
+  async put<T = object>(url: string, data: unknown) {
     return (
-      await this.request({
+      await this.request<T>({
         url,
         method: "put",
         data,
@@ -241,9 +260,9 @@ export class ClusterConnection {
     ).data;
   }
 
-  async patch(url: string, data: any) {
+  async patch<T = object>(url: string, data: unknown) {
     return (
-      await this.request({
+      await this.request<T>({
         url,
         method: "patch",
         data,
@@ -251,9 +270,9 @@ export class ClusterConnection {
     ).data;
   }
 
-  async apply(url: string, data: any) {
+  async apply<T = object>(url: string, data: unknown) {
     return (
-      await this.request({
+      await this.request<T>({
         url,
         method: "patch",
         data,
@@ -262,9 +281,9 @@ export class ClusterConnection {
     ).data;
   }
 
-  async delete(url: string, options?: DeleteOptions) {
+  async delete<T = object>(url: string, options?: DeleteOptions) {
     return (
-      await this.request({
+      await this.request<T>({
         url,
         method: "delete",
         ...(options
@@ -282,16 +301,16 @@ export class ClusterConnection {
 
   async websocket(url: string) {
     return new Promise<WebSocket>((resolve, reject) => {
-      const wsUrl = (
-        this.client.defaults.baseURL?.replace(/\/$/, "") + url
-      ).replace(/^http/, "ws");
+      const wsUrl = ((this.client.defaults.baseURL?.replace(/\/$/u, "") ?? "") + url).replace(/^http/u, "ws");
       const ws = new WebSocket(wsUrl, ["v4.channel.k8s.io"], {
-        headers: this.client.defaults.headers,
-        agent: this.client.defaults.httpsAgent,
+        headers: this.client.defaults.headers as OutgoingHttpHeaders,
+        agent: this.client.defaults.httpsAgent as Agent,
       });
-      const errorHandler = (err: Error) => {
+
+      function errorHandler(err: Error) {
         reject(err);
-      };
+      }
+
       ws.on("open", () => {
         ws.removeListener("error", errorHandler);
         resolve(ws);
@@ -299,20 +318,25 @@ export class ClusterConnection {
       ws.on("error", errorHandler);
       ws.on("unexpected-response", (req, res) => {
         const data: Buffer[] = [];
-        res.on("data", (chunk) => data.push(chunk));
+
+        res.on("data", chunk => data.push(chunk));
         res.on("end", () => {
           let parsed = {};
+
           try {
-            parsed = JSON.parse(Buffer.concat(data).toString());
-          } catch (e) {}
+            parsed = JSON.parse(Buffer.concat(data).toString()) as Record<string, unknown>;
+          } catch (e) {
+            // ignore
+          }
+
           try {
-            rethrowError({
+            rethrowError(({
               response: {
                 headers: res.headers,
-                status: res.statusCode,
+                status: res.statusCode ?? 500,
                 data: parsed,
               },
-            });
+            } as unknown) as AxiosError);
           } catch (e) {
             reject(e);
           }

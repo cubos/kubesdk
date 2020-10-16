@@ -11,15 +11,15 @@ interface PodAffinityTerm {
   topologyKey: string;
 }
 
-interface NodeSelectorTerm {
-  matchExpressions?: NodeSelectorRequirement[];
-  matchFields?: NodeSelectorRequirement[];
-}
-
 interface NodeSelectorRequirement {
   key: string;
   operator: "In" | "NotIn" | "Exists" | "DoesNotExist" | "Gt" | "Lt";
   values: string[];
+}
+
+interface NodeSelectorTerm {
+  matchExpressions?: NodeSelectorRequirement[];
+  matchFields?: NodeSelectorRequirement[];
 }
 
 type Probe = (
@@ -37,10 +37,10 @@ type Probe = (
   | {
       httpGet: {
         host?: string;
-        httpHeaders?: {
+        httpHeaders?: Array<{
           name: string;
           value: string;
-        }[];
+        }>;
         path: string;
         port?: number;
         scheme?: "HTTP" | "HTTPS";
@@ -57,7 +57,7 @@ type Probe = (
 interface Container {
   args?: string[];
   command?: string[];
-  env?: (
+  env?: Array<
     | {
         name: string;
         value: string;
@@ -93,8 +93,8 @@ interface Container {
               };
             };
       }
-  )[];
-  envFrom?: {
+  >;
+  envFrom?: Array<{
     configMapRef?: {
       name: string;
       optional?: boolean;
@@ -104,19 +104,19 @@ interface Container {
       name: string;
       optional?: boolean;
     };
-  }[];
+  }>;
   image: string;
   imagePullPolicy?: "Always" | "Never" | "IfNotPresent";
   // lifecycle?: Lifecycle
   livenessProbe?: Probe;
   name: string;
-  ports?: {
+  ports?: Array<{
     containerPort: number;
     hostIP?: string;
     hostPort?: number;
     name?: string;
     protocol?: "TCP" | "UDP" | "SCTP";
-  }[];
+  }>;
   readinessProbe?: Probe;
   resources?: {
     limits?: {
@@ -136,13 +136,13 @@ interface Container {
   terminationMessagePolicy?: string;
   tty?: boolean;
   // volumeDevices?: VolumeDevice[]
-  volumeMounts?: {
+  volumeMounts?: Array<{
     mountPath: string;
     mountPropagation?: string;
     name: string;
     readOnly?: boolean;
     subPath?: string;
-  }[];
+  }>;
   workingDir?: string;
 }
 
@@ -150,26 +150,26 @@ export interface PodSpec {
   activeDeadlineSeconds?: number;
   affinity?: {
     nodeAffinity?: {
-      preferredDuringSchedulingIgnoredDuringExecution?: {
+      preferredDuringSchedulingIgnoredDuringExecution?: Array<{
         preference?: NodeSelectorTerm;
         weight: number;
-      }[];
+      }>;
       requiredDuringSchedulingIgnoredDuringExecution?: {
         nodeSelectorTerms?: NodeSelectorTerm[];
       };
     };
     podAffinity?: {
-      preferredDuringSchedulingIgnoredDuringExecution?: {
+      preferredDuringSchedulingIgnoredDuringExecution?: Array<{
         podAffinityTerm?: PodAffinityTerm;
         weight: number;
-      }[];
+      }>;
       requiredDuringSchedulingIgnoredDuringExecution?: PodAffinityTerm[];
     };
     podAntiAffinity?: {
-      preferredDuringSchedulingIgnoredDuringExecution?: {
+      preferredDuringSchedulingIgnoredDuringExecution?: Array<{
         podAffinityTerm?: PodAffinityTerm;
         weight: number;
-      }[];
+      }>;
       requiredDuringSchedulingIgnoredDuringExecution?: PodAffinityTerm[];
     };
   };
@@ -178,8 +178,10 @@ export interface PodSpec {
   // dnsConfig?: PodDNSConfig
   dnsPolicy?: "ClusterFirstWithHostNet" | "ClusterFirst" | "Default" | "None";
   enableServiceLinks?: boolean;
-  // ephemeralContainers?: EphemeralContainer[]
-  // hostAliases?: HostAlias[]
+  /*
+   * ephemeralContainers?: EphemeralContainer[]
+   * hostAliases?: HostAlias[]
+   */
   hostIPC?: boolean;
   hostNetwork?: boolean;
   hostPID?: boolean;
@@ -202,9 +204,11 @@ export interface PodSpec {
   shareProcessNamespace?: boolean;
   subdomain?: string;
   terminationGracePeriodSeconds?: number;
-  // tolerations?: Toleration[];
-  // topologySpreadConstraints?: TopologySpreadConstraint[]
-  // volumes?: Volume[];
+  /*
+   * tolerations?: Toleration[];
+   * topologySpreadConstraints?: TopologySpreadConstraint[]
+   * volumes?: Volume[];
+   */
 }
 
 type ContainerState =
@@ -239,15 +243,15 @@ interface ContainerStatus {
 }
 
 export interface PodStatus {
-  phase?: "Pending" | "Running" | "Succeeded" | "Failed	" | "Unknown";
-  conditions?: {
+  phase?: "Pending" | "Running" | "Succeeded" | "Failed" | "Unknown";
+  conditions?: Array<{
     lastProbeTime: string;
     lastTransitionTime: string;
     message: string;
     reason: string;
     status: string;
     type: string;
-  }[];
+  }>;
   containerStatuses?: ContainerStatus[];
   ephemeralContainerStatuses?: ContainerStatus[];
   hostIP?: string;
@@ -255,54 +259,46 @@ export interface PodStatus {
   message?: string;
   nominatedNodeName?: string;
   podIP?: string;
-  podIPs?: { ip: string }[];
+  podIPs?: Array<{ ip: string }>;
   qosClass?: "BestEffort" | "Guaranteed" | "Burstable ";
   reason?: string;
   startTime?: string;
 }
 
-const _class = class Pod extends NamespacedResource<
-  PodMetadata,
-  PodSpec,
-  PodStatus
-> {
+// eslint-disable-next-line @typescript-eslint/naming-convention
+const _class = class Pod extends NamespacedResource<PodMetadata, PodSpec, PodStatus> {
   protected static kind = "Pod";
+
   protected static apiPlural = "pods";
+
   protected static apiVersion = "v1";
+
+  exec(containerName: string, command: string[], options: ExecOptions): Promise<Exec>;
 
   exec(
     containerName: string,
     command: string[],
-    options: ExecOptions
-  ): Promise<Exec>;
-  exec(
-    containerName: string,
-    command: string[]
   ): Promise<{
     stdout: Buffer;
     stderr: Buffer;
   }>;
+
   async exec(containerName: string, command: string[], options?: ExecOptions) {
     const conn = await ClusterConnection.current().websocket(
-      this.metadata.selfLink +
-        `/exec?container=${encodeURIComponent(
-          containerName
-        )}&command=${command
-          .map((x) => encodeURIComponent(x))
-          .join("&command=")}&stdin=1&stdout=1&stderr=1`
+      `${this.metadata.selfLink}/exec?container=${encodeURIComponent(containerName)}&command=${command
+        .map(x => encodeURIComponent(x))
+        .join("&command=")}&stdin=1&stdout=1&stderr=1`,
     );
+
     if (options) {
       return new Exec(conn, options);
-    } else {
-      return Exec.asPromise(conn);
     }
+
+    return Exec.asPromise(conn);
   }
 };
 
-export const Pod = wrapNamespacedResource<
-  PodMetadata,
-  PodSpec,
-  PodStatus,
-  typeof _class["prototype"],
-  typeof _class
->(_class);
+// eslint-disable-next-line @typescript-eslint/naming-convention
+export const Pod = wrapNamespacedResource<PodMetadata, PodSpec, PodStatus, typeof _class["prototype"], typeof _class>(
+  _class,
+);

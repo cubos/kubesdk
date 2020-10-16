@@ -1,5 +1,5 @@
 export interface LabelSelector {
-  matchExpressions?: (
+  matchExpressions?: Array<
     | {
         key: string;
         operator: "In" | "NotIn";
@@ -9,6 +9,6 @@ export interface LabelSelector {
         key: string;
         operator: "Exists" | "DoesNotExist";
       }
-  )[];
+  >;
   matchLabels?: Record<string, string>;
 }

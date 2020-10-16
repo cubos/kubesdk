@@ -2,12 +2,17 @@ import AJV from "ajv";
 
 export class SchemaValidationError extends Error {}
 
-export function validate(schema: object, data: any) {
+export function validate(schema: unknown, data: unknown) {
   const ajv = new AJV({
     allErrors: true,
     format: false,
     coerceTypes: true,
   });
+
+  if (typeof schema !== "object" || !schema) {
+    throw new SchemaValidationError("invalid schema");
+  }
+
   const valid = ajv.validate(schema, data);
 
   if (!valid) {
@@ -15,10 +20,14 @@ export function validate(schema: object, data: any) {
   }
 }
 
-export function _throw(error: Error): never {
+export function has<P extends PropertyKey>(target: object, property: P): target is { [K in P]: unknown } {
+  return property in target;
+}
+
+export function throwError(error: Error): never {
   throw error;
 }
 
-export function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+export async function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }

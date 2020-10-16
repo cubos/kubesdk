@@ -22,7 +22,7 @@ describe("Pod", () => {
               imagePullPolicy: "IfNotPresent",
             },
           ],
-        }
+        },
       );
 
       while (pod.status.phase === "Pending") {
@@ -33,6 +33,7 @@ describe("Pod", () => {
       expect(pod.status.phase).toBe("Running");
 
       const { stdout, stderr } = await pod.exec("base", ["echo", "hello!"]);
+
       expect(stdout.toString()).toBe("hello!\n");
       expect(stderr).toHaveLength(0);
     });

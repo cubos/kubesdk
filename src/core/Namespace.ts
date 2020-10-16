@@ -10,16 +10,16 @@ export interface NamespaceStatus {
   phase: "Active" | "Terminating";
 }
 
-const _class = class Namespace extends Resource<
-  NamespaceMetadata,
-  NamespaceSpec,
-  NamespaceStatus
-> {
+// eslint-disable-next-line @typescript-eslint/naming-convention
+const _class = class Namespace extends Resource<NamespaceMetadata, NamespaceSpec, NamespaceStatus> {
   protected static kind = "Namespace";
+
   protected static apiPlural = "namespaces";
+
   protected static apiVersion = "v1";
 };
 
+// eslint-disable-next-line @typescript-eslint/naming-convention
 export const Namespace = wrapResource<
   NamespaceMetadata,
   NamespaceSpec,
