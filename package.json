@@ -25,7 +25,7 @@
     "@types/axios": "^0.14.0",
     "@types/jest": "^26.0.14",
     "@types/js-yaml": "^3.12.5",
-    "@types/node": "^14.11.2",
+    "@types/node": "^14.14.0",
     "@types/ws": "^7.2.7",
     "@typescript-eslint/eslint-plugin": "^4.0.0",
     "@typescript-eslint/parser": "^4.0.0",
