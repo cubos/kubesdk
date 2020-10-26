@@ -94,10 +94,10 @@ export class ClusterConnection {
 
       if (context.user.token) {
         headers.Authorization = `Bearer ${context.user.token}`;
-      } else if (context.user.username && context.user.password) {
-        headers.Authorization = `Basic ${Buffer.from(`${context.user.username}:${context.user.password}`).toString(
-          "base64",
-        )}`;
+      } else if (context.user.username) {
+        headers.Authorization = `Basic ${Buffer.from(
+          `${context.user.username}:${unescape(encodeURIComponent(context.user.password ?? ""))}`,
+        ).toString("base64")}`;
       }
 
       if (context.user.impersonateUser) {
