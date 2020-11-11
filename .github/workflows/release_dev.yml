@@ -8,24 +8,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/download-artifact@v1
-        with:
-          name: version
       - uses: actions/setup-node@v1
         with:
           registry-url: https://registry.npmjs.org
       - run: npm install
-        working-directory: ./parser
       - run: |
           npm install -g json && json -I -f package.json -e '
             this.version = "0.0.0-dev.'$(date -u +'%Y%m%d%H%M%S')'";
             this.main = "dist/src/index.js";
             this.types = "dist/src/index.d.ts";
           '
-        working-directory: ./parser
       - run: npm run build
-        working-directory: ./parser
       - run: npm publish --tag dev
-        working-directory: ./parser
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}

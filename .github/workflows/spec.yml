@@ -44,5 +44,5 @@ jobs:
         with:
           version: "v0.9.0"
           image: ${{ matrix.kube }}
-      - run: npm i
+      - run: npm install
       - run: npm test
