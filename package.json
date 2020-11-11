@@ -1,8 +1,8 @@
 {
-  "name": "kubeoperator",
+  "name": "kubesdk",
   "version": "0.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Kubernetes SDK",
+  "main": "src/index.ts",
   "scripts": {
     "start": "ts-node src/main.ts",
     "test": "$(node spec/setup.js) && jest -w10",
@@ -12,8 +12,19 @@
     "prettier:check": "prettier --check '{src,spec}/**/*.{t,j}s'"
   },
   "keywords": [],
-  "author": "",
+  "author": "Guilherme Bernal <guilherme@cubos.io>",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lbguilherme/kubesdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/lbguilherme/kubesdk/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "homepage": "https://github.com/lbguilherme/kubesdk#readme",
   "dependencies": {
     "ajv": "^6.12.5",
     "axios": "^0.21.0",

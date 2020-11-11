@@ -67,7 +67,7 @@ function setupStorageClass() {
 
 if (!process.env.CI) {
   const clusters = kind("get", "clusters").split("\n");
-  const clusterName = "kubeoperator-spec";
+  const clusterName = "kubesdk-spec";
 
   if (!clusters.includes(clusterName)) {
     kind("create", "cluster", "--name", clusterName, "--wait", "1m");
