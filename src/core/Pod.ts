@@ -1,7 +1,7 @@
 import { ClusterConnection } from "../base/ClusterConnection";
 import { Exec, ExecOptions } from "../base/Exec";
 import { NamespacedResource, wrapNamespacedResource } from "../base/Resource";
-import { LabelSelector } from "./types";
+import { Condition, LabelSelector, LocalObjectReference } from "./types";
 
 export interface PodMetadata {}
 
@@ -22,7 +22,7 @@ interface NodeSelectorTerm {
   matchFields?: NodeSelectorRequirement[];
 }
 
-type Probe = (
+type Handler =
   | {
       exec: {
         command: string[];
@@ -45,14 +45,54 @@ type Probe = (
         port?: number;
         scheme?: "HTTP" | "HTTPS";
       };
-    }
-) & {
+    };
+
+type Probe = Handler & {
   failureThreshold?: number;
   initialDelaySeconds?: number;
   periodSeconds?: number;
   successThreshold?: number;
   timeoutSeconds?: number;
 };
+
+interface SELinuxOptions {
+  user?: string;
+  role?: string;
+  type?: string;
+  level?: string;
+}
+interface WindowsSecurityContextOptions {
+  gmsaCredentialSpec?: string;
+  gmsaCredentialSpecName?: string;
+  runAsUserName?: string;
+}
+
+interface SecurityContext {
+  allowPrivilegeEscalation?: boolean;
+  capabilities?: {
+    add?: string[];
+    drop?: string[];
+  };
+  privileged?: boolean;
+  procMount?: "Default" | "Unmasked";
+  readOnlyRootFilesystem?: boolean;
+  runAsGroup?: number;
+  runAsNonRoot?: boolean;
+  runAsUser?: number;
+  seLinuxOptions?: SELinuxOptions;
+  windowsOptions?: WindowsSecurityContextOptions;
+}
+
+interface PodSecurityContext {
+  fsGroup: number;
+  runAsGroup: number;
+  runAsNonRoot: boolean;
+  runAsUser: number;
+  seLinuxOptions: SELinuxOptions;
+  supplementalGroups: number[];
+  sysctls: Array<{ name: string; value: string }>;
+  windowsOptions: WindowsSecurityContextOptions;
+}
 
 interface Container {
   args?: string[];
@@ -107,7 +147,10 @@ interface Container {
   }>;
   image: string;
   imagePullPolicy?: "Always" | "Never" | "IfNotPresent";
-  // lifecycle?: Lifecycle
+  lifecycle?: {
+    postStart?: Handler;
+    preStop?: Handler;
+  };
   livenessProbe?: Probe;
   name: string;
   ports?: Array<{
@@ -128,14 +171,17 @@ interface Container {
       cpu?: string | number;
     };
   };
-  // securityContext?: SecurityContext
+  securityContext?: SecurityContext;
   startupProbe?: Probe;
   stdin?: boolean;
   stdinOnce?: boolean;
   terminationMessagePath?: string;
   terminationMessagePolicy?: string;
   tty?: boolean;
-  // volumeDevices?: VolumeDevice[]
+  volumeDevices?: Array<{
+    devicePath: string;
+    name: string;
+  }>;
   volumeMounts?: Array<{
     mountPath: string;
     mountPropagation?: string;
@@ -145,6 +191,124 @@ interface Container {
   }>;
   workingDir?: string;
 }
+
+interface KeyToPath {
+  key: string;
+  path: string;
+  mode?: string;
+}
+
+export type Volume = {
+  name: string;
+} & (
+  | // | {
+  /*
+   *     awsElasticBlockStore: AWSElasticBlockStoreVolumeSource;
+   *   }
+   * | {
+   *     azureDisk: AzureDiskVolumeSource;
+   *   }
+   * | {
+   *     azureFile: AzureFileVolumeSource;
+   *   }
+   * | {
+   *     cephfs: CephFSVolumeSource;
+   *   }
+   * | {
+   *     cinder: CinderVolumeSource;
+   *   }
+   */
+  {
+      configMap: {
+        defaultMode?: string;
+        items: KeyToPath[];
+        name: string;
+        optional?: boolean;
+      };
+    }
+  /*
+   * | {
+   *     downwardAPI: DownwardAPIVolumeSource;
+   *   }
+   */
+  | {
+      emptyDir: {
+        medium?: "" | "Memory";
+        sizeLimit?: number | string;
+      };
+    }
+  /*
+   * | {
+   *     fc: FCVolumeSource;
+   *   }
+   * | {
+   *     flexVolume: FlexVolumeSource;
+   *   }
+   * | {
+   *     flocker: FlockerVolumeSource;
+   *   }
+   * | {
+   *     gcePersistentDisk: GCEPersistentDiskVolumeSource;
+   *   }
+   * | {
+   *     gitRepo: GitRepoVolumeSource;
+   *   }
+   * | {
+   *     glusterfs: GlusterfsVolumeSource;
+   *   }
+   * | {
+   *     hostPath: HostPathVolumeSource;
+   *   }
+   * | {
+   *     iscsi: ISCSIVolumeSource;
+   *   }
+   * | {
+   *     nfs: NFSVolumeSource;
+   *   }
+   */
+  | {
+      persistentVolumeClaim: {
+        claimName: string;
+        readonly?: boolean;
+      };
+    }
+  /*
+   * | {
+   *     photonPersistentDisk: PhotonPersistentDiskVolumeSource;
+   *   }
+   * | {
+   *     portworxVolume: PortworxVolumeSource;
+   *   }
+   * | {
+   *     projected: ProjectedVolumeSource;
+   *   }
+   * | {
+   *     quobyte: QuobyteVolumeSource;
+   *   }
+   * | {
+   *     rbd: RBDVolumeSource;
+   *   }
+   * | {
+   *     scaleIO: ScaleIOVolumeSource;
+   *   }
+   */
+  | {
+      secret: {
+        defaultMode?: string;
+        items: KeyToPath[];
+        optional?: boolean;
+        secretName: string;
+      };
+    }
+  /*
+   * | {
+   *     storageos: StorageOSVolumeSource;
+   *   }
+   * | {
+   *     vsphereVolume: VsphereVirtualDiskVolumeSource;
+   *   }
+   */
+);
 
 export interface PodSpec {
   activeDeadlineSeconds?: number;
@@ -175,18 +339,23 @@ export interface PodSpec {
   };
   automountServiceAccountToken?: boolean;
   containers: Container[];
-  // dnsConfig?: PodDNSConfig
+  dnsConfig?: {
+    nameservers: string[];
+    searches: string[];
+    options: Array<{ name: string; value: string }>;
+  };
   dnsPolicy?: "ClusterFirstWithHostNet" | "ClusterFirst" | "Default" | "None";
   enableServiceLinks?: boolean;
-  /*
-   * ephemeralContainers?: EphemeralContainer[]
-   * hostAliases?: HostAlias[]
-   */
+  ephemeralContainers?: Array<Container & { targetContainerName?: string }>;
+  hostAliases?: Array<{
+    hostnames: string[];
+    ip: string;
+  }>;
   hostIPC?: boolean;
   hostNetwork?: boolean;
   hostPID?: boolean;
   hostname?: string;
-  // imagePullSecrets?: LocalObjectReference[];
+  imagePullSecrets?: LocalObjectReference[];
   initContainers?: Container[];
   nodeName?: string;
   nodeSelector?: {
@@ -194,21 +363,32 @@ export interface PodSpec {
   };
   priority?: number;
   priorityClassName?: string;
-  // readinessGates?: PodReadinessGate[]
+  readinessGates?: Array<{
+    conditionType: "PodScheduled" | "Ready" | "Initialized" | "Unschedulable" | "ContainersReady";
+  }>;
   preemptionPolicy?: "Never" | "PreemptLowerPriority";
   restartPolicy?: "Always" | "OnFailure" | "Never";
   runtimeClassName?: string;
   schedulerName?: string;
-  // securityContext?: PodSecurityContext;
+  securityContext?: PodSecurityContext;
   serviceAccountName?: string;
   shareProcessNamespace?: boolean;
   subdomain?: string;
   terminationGracePeriodSeconds?: number;
-  /*
-   * tolerations?: Toleration[];
-   * topologySpreadConstraints?: TopologySpreadConstraint[]
-   * volumes?: Volume[];
-   */
+  tolerations?: Array<{
+    effect?: "NoSchedule" | "PreferNoSchedule" | "NoExecute";
+    key?: string;
+    operator?: "Exists" | "Equal";
+    tolerationSeconds?: number;
+    value?: string;
+  }>;
+  topologySpreadConstraints?: Array<{
+    labelSelector?: LabelSelector;
+    maxSkew: number;
+    topologyKey: string;
+    whenUnsatisfiable: "DoNotSchedule" | "ScheduleAnyway";
+  }>;
+  volumes?: Volume[];
 }
 
 type ContainerState =
@@ -244,14 +424,7 @@ interface ContainerStatus {
 
 export interface PodStatus {
   phase?: "Pending" | "Running" | "Succeeded" | "Failed" | "Unknown";
-  conditions?: Array<{
-    lastProbeTime: string;
-    lastTransitionTime: string;
-    message: string;
-    reason: string;
-    status: string;
-    type: string;
-  }>;
+  conditions?: Array<Condition<"ContainersReady" | "Initialized" | "Ready" | "PodScheduled">>;
   containerStatuses?: ContainerStatus[];
   ephemeralContainerStatuses?: ContainerStatus[];
   hostIP?: string;
