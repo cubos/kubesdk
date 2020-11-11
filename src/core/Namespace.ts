@@ -1,4 +1,4 @@
-import { Resource, wrapResource } from "../base/Resource";
+import { IResource, IStaticResource, Resource, wrapResource } from "../base/Resource";
 
 export interface NamespaceMetadata {}
 
@@ -10,20 +10,16 @@ export interface NamespaceStatus {
   phase: "Active" | "Terminating";
 }
 
-// eslint-disable-next-line @typescript-eslint/naming-convention
-const _class = class Namespace extends Resource<NamespaceMetadata, NamespaceSpec, NamespaceStatus> {
-  protected static kind = "Namespace";
-
-  protected static apiPlural = "namespaces";
-
-  protected static apiVersion = "v1";
-};
+interface Namespace extends IResource<NamespaceMetadata, NamespaceSpec, NamespaceStatus> {}
+interface IStaticNamespace extends IStaticResource<Namespace, NamespaceMetadata, NamespaceSpec, NamespaceStatus> {}
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export const Namespace = wrapResource<
-  NamespaceMetadata,
-  NamespaceSpec,
-  NamespaceStatus,
-  typeof _class["prototype"],
-  typeof _class
->(_class);
+export const Namespace = wrapResource<NamespaceMetadata, NamespaceSpec, NamespaceStatus, Namespace, IStaticNamespace>(
+  class extends Resource<NamespaceMetadata, NamespaceSpec, NamespaceStatus> {
+    protected static kind = "Namespace";
+
+    protected static apiPlural = "namespaces";
+
+    protected static apiVersion = "v1";
+  },
+);

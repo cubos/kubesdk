@@ -1,6 +1,6 @@
 import { ClusterConnection } from "../base/ClusterConnection";
 import { Exec, ExecOptions } from "../base/Exec";
-import { NamespacedResource, wrapNamespacedResource } from "../base/Resource";
+import { INamespacedResource, NamespacedResource, wrapNamespacedResource } from "../base/Resource";
 import { Condition, LabelSelector, LocalObjectReference } from "./types";
 
 export interface PodMetadata {}
@@ -438,16 +438,8 @@ export interface PodStatus {
   startTime?: string;
 }
 
-// eslint-disable-next-line @typescript-eslint/naming-convention
-const _class = class Pod extends NamespacedResource<PodMetadata, PodSpec, PodStatus> {
-  protected static kind = "Pod";
-
-  protected static apiPlural = "pods";
-
-  protected static apiVersion = "v1";
-
+interface Pod extends INamespacedResource<PodMetadata, PodSpec, PodStatus> {
   exec(containerName: string, command: string[], options: ExecOptions): Promise<Exec>;
-
   exec(
     containerName: string,
     command: string[],
@@ -455,23 +447,39 @@ const _class = class Pod extends NamespacedResource<PodMetadata, PodSpec, PodSta
     stdout: Buffer;
     stderr: Buffer;
   }>;
-
-  async exec(containerName: string, command: string[], options?: ExecOptions) {
-    const conn = await ClusterConnection.current().websocket(
-      `${this.metadata.selfLink}/exec?container=${encodeURIComponent(containerName)}&command=${command
-        .map(x => encodeURIComponent(x))
-        .join("&command=")}&stdin=1&stdout=1&stderr=1`,
-    );
-
-    if (options) {
-      return new Exec(conn, options);
-    }
-
-    return Exec.asPromise(conn);
-  }
-};
+}
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export const Pod = wrapNamespacedResource<PodMetadata, PodSpec, PodStatus, typeof _class["prototype"], typeof _class>(
-  _class,
+export const Pod = wrapNamespacedResource<PodMetadata, PodSpec, PodStatus, Pod>(
+  class extends NamespacedResource<PodMetadata, PodSpec, PodStatus> {
+    protected static kind = "Pod";
+
+    protected static apiPlural = "pods";
+
+    protected static apiVersion = "v1";
+
+    exec(containerName: string, command: string[], options: ExecOptions): Promise<Exec>;
+
+    exec(
+      containerName: string,
+      command: string[],
+    ): Promise<{
+      stdout: Buffer;
+      stderr: Buffer;
+    }>;
+
+    async exec(containerName: string, command: string[], options?: ExecOptions) {
+      const conn = await ClusterConnection.current().websocket(
+        `${this.metadata.selfLink}/exec?container=${encodeURIComponent(containerName)}&command=${command
+          .map(x => encodeURIComponent(x))
+          .join("&command=")}&stdin=1&stdout=1&stderr=1`,
+      );
+
+      if (options) {
+        return new Exec(conn, options);
+      }
+
+      return Exec.asPromise(conn);
+    }
+  },
 );

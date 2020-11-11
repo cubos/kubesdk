@@ -21,7 +21,25 @@ export interface BasicResourceSpec {
   finalizers?: string[];
 }
 
-export class Resource<MetadataT, SpecT, StatusT> {
+export interface IResource<MetadataT, SpecT, StatusT> {
+  metadata: CreatableMetadata & ExtraMetadata & MetadataT;
+  spec: SpecT & BasicResourceSpec;
+  status: StatusT;
+  delete(): Promise<this>;
+  reload(): Promise<void>;
+  save(): Promise<void>;
+}
+
+export interface IStaticResource<InstanceT, MetadataT, SpecT, StatusT> {
+  // eslint-disable-next-line @typescript-eslint/prefer-function-type
+  new (
+    metadata: CreatableMetadata & ExtraMetadata & MetadataT,
+    spec: SpecT & BasicResourceSpec,
+    status: StatusT,
+  ): InstanceT;
+}
+
+export class Resource<MetadataT, SpecT, StatusT> implements IResource<MetadataT, SpecT, StatusT> {
   constructor(
     public metadata: CreatableMetadata & ExtraMetadata & MetadataT,
     public spec: SpecT & BasicResourceSpec,
@@ -98,6 +116,12 @@ type Selector = LabelSelector & {
   doesntMatchFields?: Record<string, string>;
 };
 
+export interface INamespacedResource<MetadataT, SpecT, StatusT>
+  extends IResource<MetadataT & { namespace: string }, SpecT, StatusT> {}
+
+export interface IStaticNamespacedResource<InstanceT, MetadataT, SpecT, StatusT>
+  extends IStaticResource<InstanceT, MetadataT & { namespace: string }, SpecT, StatusT> {}
+
 export class NamespacedResource<MetadataT, SpecT, StatusT> extends Resource<
   MetadataT & { namespace: string },
   SpecT,
@@ -117,7 +141,7 @@ export class NamespacedResource<MetadataT, SpecT, StatusT> extends Resource<
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface StaticResource<MetadataT, SpecT, StatusT, T> {
+export interface StaticResource<MetadataT, SpecT, StatusT, T> {
   get(name: string): Promise<T>;
   delete(name: string): Promise<T>;
   list(options?: { selector?: Selector; limit?: number }): Promise<T[]>;
@@ -136,7 +160,7 @@ interface StaticResource<MetadataT, SpecT, StatusT, T> {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface StaticNamespacedResource<MetadataT, SpecT, StatusT, T> {
+export interface StaticNamespacedResource<MetadataT, SpecT, StatusT, T> {
   get(namespace: string, name: string): Promise<T>;
   delete(namespace: string, name: string): Promise<T>;
   list(options?: { namespace?: string; selector?: Selector; limit?: number }): Promise<T[]>;
@@ -420,8 +444,8 @@ export function wrapResource<
   MetadataT,
   SpecT,
   StatusT,
-  InstanceT extends Resource<MetadataT, SpecT, StatusT>,
-  T extends new (...args: never[]) => InstanceT
+  InstanceT extends IResource<MetadataT, SpecT, StatusT>,
+  T extends new (...args: never[]) => InstanceT = IStaticResource<InstanceT, MetadataT, SpecT, StatusT>
 >(klass: T): StaticResource<MetadataT, SpecT, StatusT, InstanceT> & Omit<T, "apply"> {
   implementStaticMethods(
     (klass as unknown) as typeof Resource &
@@ -440,8 +464,8 @@ export function wrapNamespacedResource<
   MetadataT,
   SpecT,
   StatusT,
-  InstanceT extends NamespacedResource<MetadataT, SpecT, StatusT>,
-  T extends new (...args: never[]) => InstanceT
+  InstanceT extends INamespacedResource<MetadataT, SpecT, StatusT>,
+  T extends new (...args: never[]) => InstanceT = IStaticNamespacedResource<InstanceT, MetadataT, SpecT, StatusT>
 >(klass: T): StaticNamespacedResource<MetadataT, SpecT, StatusT, InstanceT> & Omit<T, "apply"> {
   implementStaticMethods(
     (klass as unknown) as typeof Resource &
