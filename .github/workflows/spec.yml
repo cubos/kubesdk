@@ -17,7 +17,7 @@ jobs:
       - uses: actions/setup-node@v1
         with:
           node-version: 14
-      - run: npm ci
+      - run: npm i
       - run: npx tsc -noEmit
       - run: npm run eslint:check
       - run: npm run prettier:check
@@ -44,5 +44,5 @@ jobs:
         with:
           version: "v0.9.0"
           image: ${{ matrix.kube }}
-      - run: npm ci
+      - run: npm i
       - run: npm test
