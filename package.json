@@ -9,7 +9,8 @@
     "eslint:fix": "eslint --fix '{src,spec}/**/*.ts'",
     "eslint:check": "eslint '{src,spec}/**/*.ts'",
     "prettier:fix": "prettier --write '{src,spec}/**/*.{t,j}s'",
-    "prettier:check": "prettier --check '{src,spec}/**/*.{t,j}s'"
+    "prettier:check": "prettier --check '{src,spec}/**/*.{t,j}s'",
+    "build": "tsc"
   },
   "keywords": [],
   "author": "Guilherme Bernal <guilherme@cubos.io>",
