@@ -31,3 +31,12 @@ export interface Condition<Type extends string> {
   status: "True" | "False" | "Unknown";
   type: Type;
 }
+export interface ObjectReference<Kind extends string = string, ApiVersion extends string = string> {
+  apiVersion: ApiVersion;
+  fieldPath: string;
+  kind: Kind;
+  name: string;
+  namespace: string;
+  resourceVersion: string;
+  uid: string;
+}

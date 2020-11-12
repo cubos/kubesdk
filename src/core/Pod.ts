@@ -438,6 +438,14 @@ export interface PodStatus {
   startTime?: string;
 }
 
+export interface PodTemplateSpec {
+  metadata?: {
+    labels?: Record<string, string>;
+    annotations?: Record<string, string>;
+  };
+  spec: PodSpec;
+}
+
 interface Pod extends INamespacedResource<PodMetadata, PodSpec, PodStatus> {
   exec(containerName: string, command: string[], options: ExecOptions): Promise<Exec>;
   exec(
