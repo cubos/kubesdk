@@ -31,7 +31,11 @@ interface DeleteOptions {
 function rethrowError(e: Error | AxiosError): never {
   if ("response" in e && e.response) {
     const retryAfterRaw = (e.response.headers as Record<string, string>)["retry-after"];
-    const data = e.response.data as Record<string, unknown>;
+    let data = e.response.data as Record<string, unknown>;
+
+    if (typeof data === "string") {
+      data = { message: data };
+    }
 
     data.code ??= e.response.status;
     throw KubernetesError.fromStatus(data, retryAfterRaw);
