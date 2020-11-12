@@ -1,6 +1,7 @@
 import commandLineArgs from "command-line-args";
 import commandLineUsage from "command-line-usage";
 import { CronJob } from "../batch/CronJob";
+import { ClusterConnection } from "./ClusterConnection";
 
 interface ControllerCronJob {
   name: string;
@@ -102,46 +103,48 @@ export class Controller {
       return;
     }
 
-    if (!options.name) {
-      throw new Error("Missing 'name' option.");
-    }
+    await new ClusterConnection().use(async () => {
+      if (!options.name) {
+        throw new Error("Missing 'name' option.");
+      }
 
-    if (!options.namespace) {
-      throw new Error("Missing 'namespace' option.");
-    }
+      if (!options.namespace) {
+        throw new Error("Missing 'namespace' option.");
+      }
 
-    if (!options.image) {
-      throw new Error("Missing 'image' option.");
-    }
+      if (!options.image) {
+        throw new Error("Missing 'image' option.");
+      }
 
-    for (const cronJob of this.cronJobs) {
-      console.log("apply CronJob", cronJob.name);
-      await CronJob.apply(
-        {
-          name: `${options.name}-${cronJob.name}`,
-          namespace: options.namespace,
-        },
-        {
-          schedule: cronJob.schedule,
-          jobTemplate: {
-            spec: {
-              template: {
-                spec: {
-                  containers: [
-                    {
-                      name: cronJob.name,
-                      image: options.image,
-                      args: ["run", "cronjob", cronJob.name],
-                    },
-                  ],
-                  restartPolicy: "Never",
+      for (const cronJob of this.cronJobs) {
+        console.log("apply CronJob", cronJob.name);
+        await CronJob.apply(
+          {
+            name: `${options.name}-${cronJob.name}`,
+            namespace: options.namespace,
+          },
+          {
+            schedule: cronJob.schedule,
+            jobTemplate: {
+              spec: {
+                template: {
+                  spec: {
+                    containers: [
+                      {
+                        name: cronJob.name,
+                        image: options.image,
+                        args: ["run", "cronjob", cronJob.name],
+                      },
+                    ],
+                    restartPolicy: "Never",
+                  },
                 },
               },
             },
           },
-        },
-      );
-    }
+        );
+      }
+    });
   }
 
   private async cliRun(argv: string[]) {
@@ -178,20 +181,22 @@ export class Controller {
 
     const args = options._unknown ?? [];
 
-    switch (args.shift()) {
-      case "cronjob": {
-        const cronJob = this.cronJobs.find(x => x.name === args[0]);
+    await new ClusterConnection().use(async () => {
+      switch (args.shift()) {
+        case "cronjob": {
+          const cronJob = this.cronJobs.find(x => x.name === args[0]);
 
-        if (!cronJob) {
-          throw new Error(`Unknown cronjob "${args[0]}"`);
+          if (!cronJob) {
+            throw new Error(`Unknown cronjob "${args[0]}"`);
+          }
+
+          await cronJob.func();
+          break;
         }
 
-        await cronJob.func();
-        break;
+        default:
+          showHelp();
       }
-
-      default:
-        showHelp();
-    }
+    });
   }
 }
