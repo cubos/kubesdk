@@ -71,14 +71,12 @@ if (!process.env.CI) {
 
   if (!clusters.includes(clusterName)) {
     kind("create", "cluster", "--name", clusterName, "--wait", "1m");
+    writeFileSync(".spec-kubeconfig", kind("get", "kubeconfig", "--name", clusterName));
     setupStorageClass();
-    clusters.push(clusterName);
 
     run("docker", "pull", "busybox");
     kind("load", "docker-image", "busybox", "--name", clusterName);
   }
-
-  writeFileSync(".spec-kubeconfig", kind("get", "kubeconfig", "--name", clusterName));
 
   // See package.json
   console.log("export KUBECONFIG=.spec-kubeconfig");
