@@ -1,6 +1,5 @@
 import "jest-extended";
 import { Pod } from "../../src/core/Pod";
-import { sleep } from "../../src/utils";
 
 describe("Pod", () => {
   test("exec", async () => {
@@ -21,9 +20,10 @@ describe("Pod", () => {
       },
     );
 
-    while (pod.status.phase === "Pending") {
-      await sleep(300);
-      await pod.reload();
+    for await (const _ of pod.watch()) {
+      if (pod.status.phase !== "Pending") {
+        break;
+      }
     }
 
     expect(pod.status.phase).toBe("Running");

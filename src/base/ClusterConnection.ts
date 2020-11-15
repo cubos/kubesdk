@@ -2,10 +2,11 @@ import { AsyncLocalStorage } from "async_hooks";
 import Axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from "axios";
 import * as AxiosLogger from "axios-logger";
 import { readFileSync } from "fs";
-import { OutgoingHttpHeaders } from "http";
+import { IncomingMessage, OutgoingHttpHeaders } from "http";
 import { Agent } from "https";
 import { homedir } from "os";
 import { join } from "path";
+import { Readable, Transform } from "stream";
 import WebSocket from "ws";
 import { has, sleep } from "../utils";
 import { KubeConfig } from "./KubeConfig";
@@ -276,7 +277,9 @@ export class ClusterConnection {
         url,
         method: "patch",
         data,
-        headers: { "Content-Type": "application/apply-patch+yaml" },
+        headers: {
+          "Content-Type": "application/apply-patch+yaml",
+        },
       })
     ).data;
   }
@@ -297,6 +300,19 @@ export class ClusterConnection {
           : {}),
       })
     ).data;
+  }
+
+  async watch(url: string, resourceVersion?: string) {
+    const response = await this.request<IncomingMessage>({
+      url: url + (resourceVersion ? `?resourceVersion=${resourceVersion}` : ""),
+      method: "get",
+      responseType: "stream",
+      headers: {
+        Accept: "application/json;stream=watch",
+      },
+    });
+
+    return response.data.pipe(new WatchStream(response.data));
   }
 
   async websocket(url: string) {
@@ -343,5 +359,41 @@ export class ClusterConnection {
         });
       });
     });
+  }
+}
+
+export class WatchStream extends Transform {
+  private previous: Buffer[] = [];
+
+  constructor(private wrappedStream: Readable) {
+    super({
+      readableObjectMode: true,
+    });
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  _transform(chunk: any, encoding: BufferEncoding, callback: (error?: Error | null, data?: any) => void) {
+    let current = chunk instanceof Buffer ? chunk : Buffer.from(chunk, encoding);
+
+    for (;;) {
+      const index = current.indexOf(10);
+
+      if (index < 0) {
+        this.previous.push(current);
+        callback();
+        return;
+      }
+
+      const data = Buffer.concat([...this.previous, current.slice(0, index)]).toString();
+
+      this.previous = [];
+      current = current.slice(index + 1);
+
+      this.push(JSON.parse(data));
+    }
+  }
+
+  _destroy() {
+    this.wrappedStream.destroy();
   }
 }

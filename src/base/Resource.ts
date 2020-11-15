@@ -2,6 +2,7 @@ import * as QueryString from "querystring";
 import { LabelSelector } from "../core/types";
 import { has, throwError, validate } from "../utils";
 import { ClusterConnection } from "./ClusterConnection";
+import { ResourceWatch } from "./ResourceWatch";
 
 export interface CreatableMetadata {
   name: string;
@@ -28,6 +29,7 @@ export interface IResource<MetadataT, SpecT, StatusT> {
   delete(): Promise<this>;
   reload(): Promise<void>;
   save(): Promise<void>;
+  watch(): ResourceWatch<this>;
 }
 
 export interface IStaticResource<InstanceT, MetadataT, SpecT, StatusT> {
@@ -63,7 +65,7 @@ export class Resource<MetadataT, SpecT, StatusT> implements IResource<MetadataT,
     return (await this.base.parseRawObject(conn, obj)) as this;
   }
 
-  private get base() {
+  private get base(): typeof Resource & StaticResource<MetadataT, SpecT, StatusT, Resource<MetadataT, SpecT, StatusT>> {
     return this.constructor as typeof Resource &
       StaticResource<MetadataT, SpecT, StatusT, Resource<MetadataT, SpecT, StatusT>>;
   }
@@ -109,6 +111,24 @@ export class Resource<MetadataT, SpecT, StatusT> implements IResource<MetadataT,
     this.spec = obj.spec;
     this.status = obj.status;
   }
+
+  watch() {
+    const conn = ClusterConnection.current();
+    const resourceWatch = this.base.watch(this.metadata.name) as ResourceWatch<this>;
+
+    resourceWatch.lastSeemResourceVersion = this.metadata.resourceVersion;
+    resourceWatch.uid = this.metadata.uid;
+    resourceWatch.parseFunction = async raw => {
+      const obj = await this.parseRawObject(conn, raw);
+
+      this.metadata = obj.metadata;
+      this.spec = obj.spec;
+      this.status = obj.status;
+      return this;
+    };
+
+    return resourceWatch;
+  }
 }
 
 type Selector = LabelSelector & {
@@ -138,11 +158,30 @@ export class NamespacedResource<MetadataT, SpecT, StatusT> extends Resource<
         Resource<MetadataT & { namespace: string }, SpecT, StatusT>
       >;
   }
+
+  watch() {
+    const conn = ClusterConnection.current();
+    const resourceWatch = this.nsbase.watch(this.metadata.namespace, this.metadata.name) as ResourceWatch<this>;
+
+    resourceWatch.lastSeemResourceVersion = this.metadata.resourceVersion;
+    resourceWatch.uid = this.metadata.uid;
+    resourceWatch.parseFunction = async raw => {
+      const obj = await this.parseRawObject(conn, raw);
+
+      this.metadata = obj.metadata;
+      this.spec = obj.spec;
+      this.status = obj.status;
+      return this;
+    };
+
+    return resourceWatch;
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export interface StaticResource<MetadataT, SpecT, StatusT, T> {
+export interface StaticResource<MetadataT, SpecT, StatusT, T extends IResource<MetadataT, SpecT, StatusT>> {
   get(name: string): Promise<T>;
+  watch(name: string): ResourceWatch<T>;
   delete(name: string): Promise<T>;
   list(options?: { selector?: Selector; limit?: number }): Promise<T[]>;
   create: {} extends SpecT
@@ -160,8 +199,14 @@ export interface StaticResource<MetadataT, SpecT, StatusT, T> {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export interface StaticNamespacedResource<MetadataT, SpecT, StatusT, T> {
+export interface StaticNamespacedResource<
+  MetadataT,
+  SpecT,
+  StatusT,
+  T extends INamespacedResource<MetadataT, SpecT, StatusT>
+> {
   get(namespace: string, name: string): Promise<T>;
+  watch(namespace: string, name: string): ResourceWatch<T>;
   delete(namespace: string, name: string): Promise<T>;
   list(options?: { namespace?: string; selector?: Selector; limit?: number }): Promise<T[]>;
   create: {} extends SpecT
@@ -182,8 +227,8 @@ export interface StaticNamespacedResource<MetadataT, SpecT, StatusT, T> {
 
 function implementStaticMethods(
   klass: typeof Resource &
-    StaticResource<unknown, unknown, unknown, Resource<unknown, unknown, unknown>> &
-    StaticNamespacedResource<unknown, unknown, unknown, Resource<unknown, unknown, unknown>> & {
+    StaticResource<unknown, unknown, unknown, IResource<unknown, unknown, unknown>> &
+    StaticNamespacedResource<unknown, unknown, unknown, INamespacedResource<unknown, unknown, unknown>> & {
       isNamespaced: boolean;
       kind: string | null;
       apiVersion: string | null;
@@ -249,6 +294,28 @@ function implementStaticMethods(
     const raw = await conn.get(url);
 
     return parseRawObject(conn, raw);
+  };
+
+  klass.watch = (namespaceOrName: string, name?: string) => {
+    const conn = ClusterConnection.current();
+    const base = apiVersion.includes("/") ? `apis` : "api";
+    let url;
+
+    if (klass.isNamespaced) {
+      const namespace = namespaceOrName;
+
+      if (!name) {
+        throw new Error("Expected to receive resource name");
+      }
+
+      url = `/${base}/${apiVersion}/watch/namespaces/${encodeURIComponent(namespace)}/${apiPlural}/${encodeURIComponent(
+        name,
+      )}`;
+    } else {
+      url = `/${base}/${apiVersion}/watch/${apiPlural}/${encodeURIComponent(namespaceOrName)}`;
+    }
+
+    return new ResourceWatch<typeof klass.prototype>(conn, url, async raw => parseRawObject(conn, raw));
   };
 
   klass.delete = async (namespaceOrName: string, name?: string) => {
@@ -405,8 +472,7 @@ function implementStaticMethods(
     return parseRawObject(conn, raw);
   };
 
-  (klass as StaticResource<unknown, unknown, unknown, Resource<unknown, unknown, unknown>> &
-    StaticNamespacedResource<unknown, unknown, unknown, Resource<unknown, unknown, unknown>>).apply = async (
+  (klass as StaticResource<unknown, unknown, unknown, IResource<unknown, unknown, unknown>>).apply = async (
     metadata: CreatableMetadata & { namespace?: string },
     spec: unknown,
   ) => {
@@ -450,7 +516,7 @@ export function wrapResource<
   implementStaticMethods(
     (klass as unknown) as typeof Resource &
       StaticResource<unknown, unknown, unknown, Resource<unknown, unknown, unknown>> &
-      StaticNamespacedResource<unknown, unknown, unknown, Resource<unknown, unknown, unknown>> & {
+      StaticNamespacedResource<unknown, unknown, unknown, NamespacedResource<unknown, unknown, unknown>> & {
         isNamespaced: boolean;
         kind: string | null;
         apiVersion: string | null;
@@ -470,7 +536,7 @@ export function wrapNamespacedResource<
   implementStaticMethods(
     (klass as unknown) as typeof Resource &
       StaticResource<unknown, unknown, unknown, Resource<unknown, unknown, unknown>> &
-      StaticNamespacedResource<unknown, unknown, unknown, Resource<unknown, unknown, unknown>> & {
+      StaticNamespacedResource<unknown, unknown, unknown, NamespacedResource<unknown, unknown, unknown>> & {
         isNamespaced: boolean;
         kind: string | null;
         apiVersion: string | null;
