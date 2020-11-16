@@ -1,5 +1,14 @@
 export { ClusterConnection } from "./base/ClusterConnection";
+export { Controller } from "./base/Controller";
 export { KubernetesError } from "./base/KubernetesError";
+export { CronJob } from "./batch/CronJob";
+export { Job } from "./batch/Job";
 export { Namespace } from "./core/Namespace";
 export { PersistentVolumeClaim } from "./core/PersistentVolumeClaim";
 export { Pod } from "./core/Pod";
+export { Secret } from "./core/Secret";
+export { ServiceAccount } from "./core/ServiceAccount";
+export { ClusterRole } from "./rbac/ClusterRole";
+export { ClusterRoleBinding } from "./rbac/ClusterRoleBinding";
+export { Role } from "./rbac/Role";
+export { RoleBinding } from "./rbac/RoleBinding";
