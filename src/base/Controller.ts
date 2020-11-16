@@ -56,9 +56,6 @@ export class Controller {
             header: "Options",
             optionList: optionDefinitions,
           },
-          {
-            content: "Project home: {underline https://github.com/kubesdk/kubesdk}",
-          },
         ]),
       );
     }
@@ -108,9 +105,6 @@ export class Controller {
           {
             header: "Options",
             optionList: optionDefinitions,
-          },
-          {
-            content: "Project home: {underline https://github.com/kubesdk/kubesdk}",
           },
         ]),
       );
@@ -217,6 +211,11 @@ export class Controller {
               spec: {
                 template: {
                   spec: {
+                    ...(options.imagePullSecret
+                      ? {
+                          imagePullSecrets: [{ name: options.imagePullSecret }],
+                        }
+                      : {}),
                     containers: [
                       {
                         name: cronJob.name,
@@ -255,9 +254,6 @@ export class Controller {
           {
             header: "Options",
             optionList: optionDefinitions,
-          },
-          {
-            content: "Project home: {underline https://github.com/kubesdk/kubesdk}",
           },
         ]),
       );
