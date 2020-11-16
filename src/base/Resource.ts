@@ -104,8 +104,8 @@ export class Resource<MetadataT, SpecT, StatusT> implements IResource<MetadataT,
       apiVersion,
       kind,
       metadata: this.metadata,
-      spec: this.spec,
       status: this.status,
+      ...(this.base.hasInlineSpec ? this.spec : { spec: this.spec }),
     });
     const obj = await this.parseRawObject(conn, raw);
 
@@ -489,7 +489,7 @@ function implementStaticMethods(
       apiVersion,
       kind,
       metadata,
-      spec: spec ?? {},
+      ...(hasInlineSpec ? (spec as any) ?? {} : { spec: spec ?? {} }),
     });
 
     return parseRawObject(conn, raw);
@@ -521,7 +521,7 @@ function implementStaticMethods(
         apiVersion,
         kind,
         metadata,
-        spec: spec ?? {},
+        ...(hasInlineSpec ? (spec as any) ?? {} : { spec: spec ?? {} }),
       },
     );
 
