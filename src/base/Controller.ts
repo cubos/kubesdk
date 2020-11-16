@@ -12,6 +12,8 @@ interface ControllerCronJob {
 export class Controller {
   private cronJobs: ControllerCronJob[] = [];
 
+  constructor(public name: string) {}
+
   addCronJob(name: string, schedule: string, func: () => Promise<void>) {
     this.cronJobs.push({ name, schedule, func });
   }
@@ -181,7 +183,9 @@ export class Controller {
 
     const args = options._unknown ?? [];
 
-    await new ClusterConnection().use(async () => {
+    await new ClusterConnection({
+      name: this.name,
+    }).use(async () => {
       switch (args.shift()) {
         case "cronjob": {
           const cronJob = this.cronJobs.find(x => x.name === args[0]);

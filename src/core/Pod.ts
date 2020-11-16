@@ -459,7 +459,8 @@ interface Pod extends INamespacedResource<PodMetadata, PodSpec, PodStatus> {
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const Pod = wrapNamespacedResource<PodMetadata, PodSpec, PodStatus, Pod>(
-  class extends NamespacedResource<PodMetadata, PodSpec, PodStatus> {
+  // eslint-disable-next-line no-shadow
+  class Pod extends NamespacedResource<PodMetadata, PodSpec, PodStatus> {
     protected static kind = "Pod";
 
     protected static apiPlural = "pods";

@@ -15,7 +15,8 @@ interface IStaticNamespace extends IStaticResource<Namespace, NamespaceMetadata,
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const Namespace = wrapResource<NamespaceMetadata, NamespaceSpec, NamespaceStatus, Namespace, IStaticNamespace>(
-  class extends Resource<NamespaceMetadata, NamespaceSpec, NamespaceStatus> {
+  // eslint-disable-next-line no-shadow
+  class Namespace extends Resource<NamespaceMetadata, NamespaceSpec, NamespaceStatus> {
     protected static kind = "Namespace";
 
     protected static apiPlural = "namespaces";

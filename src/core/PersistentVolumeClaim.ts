@@ -36,7 +36,8 @@ export const PersistentVolumeClaim = wrapNamespacedResource<
   PersistentVolumeClaimStatus,
   PersistentVolumeClaim
 >(
-  class extends NamespacedResource<
+  // eslint-disable-next-line no-shadow
+  class PersistentVolumeClaim extends NamespacedResource<
     PersistentVolumeClaimMetadata,
     PersistentVolumeClaimSpec,
     PersistentVolumeClaimStatus

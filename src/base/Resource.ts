@@ -56,6 +56,8 @@ export class Resource<MetadataT, SpecT, StatusT> implements IResource<MetadataT,
 
   protected static apiPlural: string | null = null;
 
+  protected static hasInlineSpec = false;
+
   private static parseRawObject: (
     conn: ClusterConnection,
     obj: unknown,
@@ -233,11 +235,13 @@ function implementStaticMethods(
       kind: string | null;
       apiVersion: string | null;
       apiPlural: string | null;
+      hasInlineSpec: boolean;
     },
 ) {
   const kind = klass.kind ?? throwError(new Error(`Please specify 'kind' for ${klass.name}`));
   const apiVersion = klass.apiVersion ?? throwError(new Error(`Please specify 'apiVersion' for ${klass.name}`));
   const apiPlural = klass.apiPlural ?? throwError(new Error(`Please specify 'apiPlural' for ${klass.name}`));
+  const { hasInlineSpec } = klass;
 
   async function parseRawObject(conn: ClusterConnection, obj: object) {
     if (!has(obj, "kind") || !has(obj, "apiVersion") || !has(obj, "metadata")) {
@@ -260,11 +264,30 @@ function implementStaticMethods(
       validate(schema, obj);
     }
 
+    let spec: any = {};
+
+    if (hasInlineSpec) {
+      for (const key in obj) {
+        if (!obj.hasOwnProperty(key)) {
+          continue;
+        }
+
+        if (["kind", "apiVersion", "metadata", "status"].includes(key)) {
+          continue;
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        spec[key] = (obj as any)[key];
+      }
+    } else if (has(obj, "spec")) {
+      ({ spec } = obj);
+    }
+
     return new klass(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       obj.metadata as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      has(obj, "spec") ? (obj.spec as any) : {},
+      spec,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       has(obj, "status") ? (obj.status as any) : {},
     );
@@ -521,6 +544,7 @@ export function wrapResource<
         kind: string | null;
         apiVersion: string | null;
         apiPlural: string | null;
+        hasInlineSpec: boolean;
       },
   );
   return (klass as unknown) as StaticResource<MetadataT, SpecT, StatusT, InstanceT> & Omit<T, "apply">;
@@ -541,6 +565,7 @@ export function wrapNamespacedResource<
         kind: string | null;
         apiVersion: string | null;
         apiPlural: string | null;
+        hasInlineSpec: boolean;
       },
   );
   return (klass as unknown) as StaticNamespacedResource<MetadataT, SpecT, StatusT, InstanceT> & Omit<T, "apply">;
