@@ -156,7 +156,7 @@ export class Controller {
             },
             subjects: [
               {
-                kind: "ServiceGroup",
+                kind: "ServiceAccount",
                 name: serviceAccount.metadata.name,
                 namespace: options.namespace,
               },
@@ -189,7 +189,7 @@ export class Controller {
             },
             subjects: [
               {
-                kind: "ServiceGroup",
+                kind: "ServiceAccount",
                 name: serviceAccount.metadata.name,
                 namespace: options.namespace,
               },

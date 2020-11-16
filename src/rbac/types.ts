@@ -16,7 +16,7 @@ export type PolicyRule = (
 export type Subject =
   | {
       apiGroup?: "";
-      kind: "ServiceGroup";
+      kind: "ServiceAccount";
       name: string;
       namespace: string;
     }
