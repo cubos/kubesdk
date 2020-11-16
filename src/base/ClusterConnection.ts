@@ -1,7 +1,7 @@
 import { AsyncLocalStorage } from "async_hooks";
 import Axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from "axios";
 import * as AxiosLogger from "axios-logger";
-import { readFileSync } from "fs";
+import { accessSync, readFileSync } from "fs";
 import { IncomingMessage, OutgoingHttpHeaders } from "http";
 import { Agent } from "https";
 import { homedir } from "os";
@@ -48,10 +48,10 @@ function rethrowError(e: Error | AxiosError): never {
 export class ClusterConnection {
   static asyncLocalStorage = new AsyncLocalStorage<ClusterConnection>();
 
-  static defaultConnection = new ClusterConnection();
+  static defaultConnection: ClusterConnection | undefined;
 
   static current() {
-    return this.asyncLocalStorage.getStore() ?? this.defaultConnection;
+    return this.asyncLocalStorage.getStore() ?? (this.defaultConnection ??= new ClusterConnection());
   }
 
   private client: AxiosInstance;
@@ -87,51 +87,82 @@ export class ClusterConnection {
           : {}),
       });
     } else {
-      const kubeconfig = readFileSync(
-        options.kubeconfigPath ?? process.env.KUBECONFIG ?? join(homedir(), ".kube", "config"),
-        "utf-8",
-      );
+      let kubeconfigPath = options.kubeconfigPath ?? process.env.KUBECONFIG;
 
-      const config = new KubeConfig(kubeconfig);
-      const context = config.context(options.context);
+      if (!kubeconfigPath) {
+        kubeconfigPath = join(homedir(), ".kube", "config");
 
-      const headers = {} as Record<string, string | string[]>;
-
-      if (context.user.token) {
-        headers.Authorization = `Bearer ${context.user.token}`;
-      } else if (context.user.username) {
-        headers.Authorization = `Basic ${Buffer.from(
-          `${context.user.username}:${unescape(encodeURIComponent(context.user.password ?? ""))}`,
-        ).toString("base64")}`;
-      }
-
-      if (context.user.impersonateUser) {
-        headers["Impersonate-User"] = context.user.impersonateUser;
-      }
-
-      if (context.user.impersonateGroups) {
-        headers["Impersonate-Group"] = context.user.impersonateGroups;
-      }
-
-      if (context.user.impersonateExtra) {
-        for (const [key, value] of context.user.impersonateExtra) {
-          headers[`Impersonate-Extra-${key}`] = value;
+        try {
+          accessSync(kubeconfigPath);
+        } catch {
+          kubeconfigPath = undefined;
         }
       }
 
-      this.client = Axios.create({
-        baseURL: context.cluster.server.toString(),
-        headers,
-        httpsAgent: new Agent({
-          ...(context.cluster.certificateAuthorityData ? { ca: context.cluster.certificateAuthorityData } : {}),
-          ...(context.user.clientCertificateData && context.user.clientKeyData
-            ? {
-                cert: context.user.clientCertificateData,
-                key: context.user.clientKeyData,
-              }
-            : {}),
-        }),
-      });
+      if (kubeconfigPath) {
+        const kubeconfig = readFileSync(kubeconfigPath, "utf-8");
+
+        const config = new KubeConfig(kubeconfig);
+        const context = config.context(options.context);
+
+        const headers = {} as Record<string, string | string[]>;
+
+        if (context.user.token) {
+          headers.Authorization = `Bearer ${context.user.token}`;
+        } else if (context.user.username) {
+          headers.Authorization = `Basic ${Buffer.from(
+            `${context.user.username}:${unescape(encodeURIComponent(context.user.password ?? ""))}`,
+          ).toString("base64")}`;
+        }
+
+        if (context.user.impersonateUser) {
+          headers["Impersonate-User"] = context.user.impersonateUser;
+        }
+
+        if (context.user.impersonateGroups) {
+          headers["Impersonate-Group"] = context.user.impersonateGroups;
+        }
+
+        if (context.user.impersonateExtra) {
+          for (const [key, value] of context.user.impersonateExtra) {
+            headers[`Impersonate-Extra-${key}`] = value;
+          }
+        }
+
+        this.client = Axios.create({
+          baseURL: context.cluster.server.toString(),
+          headers,
+          httpsAgent: new Agent({
+            ...(context.cluster.certificateAuthorityData ? { ca: context.cluster.certificateAuthorityData } : {}),
+            ...(context.user.clientCertificateData && context.user.clientKeyData
+              ? {
+                  cert: context.user.clientCertificateData,
+                  key: context.user.clientKeyData,
+                }
+              : {}),
+          }),
+        });
+      } else {
+        try {
+          const token = readFileSync("/var/run/secrets/kubernetes.io/serviceaccount/token", "utf-8");
+          const ca = Buffer.from(
+            readFileSync("/var/run/secrets/kubernetes.io/serviceaccount/ca.crt", "utf-8").split("\n")[1],
+            "base64",
+          );
+
+          this.client = Axios.create({
+            baseURL: "https://kubernetes.default",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            httpsAgent: new Agent({
+              ca,
+            }),
+          });
+        } catch {
+          throw new Error("Could not find a Kubernetes default credential to use");
+        }
+      }
     }
 
     this.options = {
