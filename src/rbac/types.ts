@@ -1,12 +1,17 @@
-export interface PolicyRule {
-  apiGroups: string[];
-  nonResourceURLs: string[];
-  resourceNames: string[];
-  resources: string[];
+export type PolicyRule = (
+  | {
+      apiGroups: string[];
+      resourceNames?: string[];
+      resources: string[];
+    }
+  | {
+      nonResourceURLs: string[];
+    }
+) & {
   verbs: Array<
     "create" | "get" | "list" | "watch" | "update" | "patch" | "delete" | "use" | "bind" | "escalate" | "impersonate"
   >;
-}
+};
 
 export type Subject =
   | {
