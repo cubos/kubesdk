@@ -1,68 +1,70 @@
-export class KubernetesError extends Error {
-  public details: unknown;
+export class KubernetesError {
+  static Generic = class Generic extends Error {
+    public details: unknown;
 
-  public code: number;
+    public code: number;
 
-  public retryAfter: number | null;
+    public retryAfter: number | null;
 
-  constructor(obj: Record<string, unknown>, retryAfterRaw: string | undefined) {
-    let message = "";
+    constructor(obj: Record<string, unknown>, retryAfterRaw: string | undefined) {
+      let message = "";
 
-    if ("message" in obj) {
-      if (typeof obj.message === "string") {
-        ({ message } = obj);
-      }
-    }
-
-    super(message);
-    this.details = obj.details ?? null;
-
-    this.code = 0;
-    if (typeof obj.code === "number") {
-      this.code = obj.code;
-    }
-
-    this.retryAfter = null;
-    if (retryAfterRaw) {
-      const retryAfterInt = parseInt(retryAfterRaw, 10);
-
-      if (retryAfterInt.toString() === retryAfterRaw.trim()) {
-        this.retryAfter = retryAfterInt * 1000;
+      if ("message" in obj) {
+        if (typeof obj.message === "string") {
+          ({ message } = obj);
+        }
       }
 
-      const retryAfterDate = new Date(retryAfterRaw);
+      super(message);
+      this.details = obj.details ?? null;
 
-      if (!isNaN(retryAfterDate.getTime())) {
-        this.retryAfter = Math.max(0, retryAfterDate.getTime() - new Date().getTime());
+      this.code = 0;
+      if (typeof obj.code === "number") {
+        this.code = obj.code;
+      }
+
+      this.retryAfter = null;
+      if (retryAfterRaw) {
+        const retryAfterInt = parseInt(retryAfterRaw, 10);
+
+        if (retryAfterInt.toString() === retryAfterRaw.trim()) {
+          this.retryAfter = retryAfterInt * 1000;
+        }
+
+        const retryAfterDate = new Date(retryAfterRaw);
+
+        if (!isNaN(retryAfterDate.getTime())) {
+          this.retryAfter = Math.max(0, retryAfterDate.getTime() - new Date().getTime());
+        }
       }
     }
-  }
+  };
 
-  static BadRequest = class BadRequest extends KubernetesError {};
+  static BadRequest = class BadRequest extends KubernetesError.Generic {};
 
-  static Unauthorized = class Unauthorized extends KubernetesError {};
+  static Unauthorized = class Unauthorized extends KubernetesError.Generic {};
 
-  static Forbidden = class Forbidden extends KubernetesError {};
+  static Forbidden = class Forbidden extends KubernetesError.Generic {};
 
-  static NotFound = class NotFound extends KubernetesError {};
+  static NotFound = class NotFound extends KubernetesError.Generic {};
 
-  static MethodNotAllowed = class MethodNotAllowed extends KubernetesError {};
+  static MethodNotAllowed = class MethodNotAllowed extends KubernetesError.Generic {};
 
-  static Conflict = class Conflict extends KubernetesError {};
+  static Conflict = class Conflict extends KubernetesError.Generic {};
 
-  static Gone = class Gone extends KubernetesError {};
+  static Gone = class Gone extends KubernetesError.Generic {};
 
-  static UnprocessableEntity = class UnprocessableEntity extends KubernetesError {};
+  static UnprocessableEntity = class UnprocessableEntity extends KubernetesError.Generic {};
 
-  static TooManyRequests = class TooManyRequests extends KubernetesError {};
+  static TooManyRequests = class TooManyRequests extends KubernetesError.Generic {};
 
-  static InternalServerError = class InternalServerError extends KubernetesError {};
+  static InternalServerError = class InternalServerError extends KubernetesError.Generic {};
 
-  static ServiceUnavailable = class ServiceUnavailable extends KubernetesError {};
+  static ServiceUnavailable = class ServiceUnavailable extends KubernetesError.Generic {};
 
-  static ServerTimeout = class ServerTimeout extends KubernetesError {};
+  static ServerTimeout = class ServerTimeout extends KubernetesError.Generic {};
 
-  static NonZeroExitCode = class NonZeroExitCode extends KubernetesError {};
+  static NonZeroExitCode = class NonZeroExitCode extends KubernetesError.Generic {};
 
   static fromStatus(data: Record<string, unknown>, retryAfterRaw?: string) {
     switch (data.code) {
@@ -96,7 +98,7 @@ export class KubernetesError extends Error {
             return new KubernetesError.NonZeroExitCode(data, retryAfterRaw);
           default:
             console.error("Unhandled error code", data);
-            return new KubernetesError(data, retryAfterRaw);
+            return new KubernetesError.Generic(data, retryAfterRaw);
         }
     }
   }

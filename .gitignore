@@ -3,3 +3,4 @@ openapi.json
 .spec-kubeconfig
 coverage
 package-lock.json
+dist
