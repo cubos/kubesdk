@@ -1,27 +1,27 @@
 import { ClusterConnection, WatchStream } from "./ClusterConnection";
 import { IResource } from "./Resource";
 
-type InternalWatchNotification<T extends IResource<unknown, unknown, unknown>> =
+type InternalWatchEvent<T extends IResource<unknown, unknown, unknown>> =
   | { type: "ADDED"; object: T }
   | { type: "MODIFIED"; object: T }
   | { type: "DELETED"; object: T }
   | { type: "BOOKMARK"; object: { kind: string; apiVersion: string; metadata: { resourceVersion: string } } }
   | { type: "ERROR"; object: unknown };
 
-type WatchNotification<T extends IResource<unknown, unknown, unknown>> =
+type WatchEvent<T extends IResource<unknown, unknown, unknown>> =
   | { type: "ADDED"; object: T }
   | { type: "MODIFIED"; object: T }
   | { type: "DELETED"; object: T };
 
 export class ResourceWatch<T extends IResource<unknown, unknown, unknown>>
-  implements AsyncGenerator<WatchNotification<T>, undefined, undefined> {
-  public lastSeemResourceVersion: string | undefined;
-
-  private stream: WatchStream | undefined;
+  implements AsyncGenerator<WatchEvent<T>, undefined> {
+  private lastSeemResourceVersion: string | undefined;
 
   private closed = false;
 
-  private streamIterator: AsyncIterator<InternalWatchNotification<T>, undefined> | undefined;
+  private stream: WatchStream | undefined;
+
+  private streamIterator: AsyncIterator<InternalWatchEvent<T>, undefined> | undefined;
 
   constructor(
     private conn: ClusterConnection,
@@ -33,7 +33,7 @@ export class ResourceWatch<T extends IResource<unknown, unknown, unknown>>
     return this;
   }
 
-  async next(): Promise<IteratorResult<WatchNotification<T>, undefined>> {
+  async next(): Promise<IteratorResult<WatchEvent<T>, undefined>> {
     if (this.closed) {
       return { done: true, value: undefined };
     }
@@ -43,38 +43,40 @@ export class ResourceWatch<T extends IResource<unknown, unknown, unknown>>
       this.streamIterator = this.stream[Symbol.asyncIterator]();
     }
 
+    let result;
+
     try {
-      const result = await this.streamIterator.next();
-
-      if (result.done === true) {
-        this.close();
-        return { done: result.done, value: undefined };
-      }
-
-      if (result.value.type === "ERROR") {
-        throw result.value.object;
-      }
-
-      this.lastSeemResourceVersion = result.value.object.metadata.resourceVersion;
-
-      if (result.value.type === "BOOKMARK") {
-        return this.next();
-      }
-
-      if (result.value.type === "DELETED") {
-        this.close();
-      }
-
-      return {
-        done: false,
-        value: { type: result.value.type, object: await this.parseFunction(result.value.object) },
-      };
+      result = await this.streamIterator.next();
     } catch (err) {
       this.stream.destroy();
       this.stream = undefined;
       this.streamIterator = undefined;
       return this.next();
     }
+
+    if (result.done === true) {
+      this.close();
+      return { done: result.done, value: undefined };
+    }
+
+    if (result.value.type === "ERROR") {
+      throw result.value.object;
+    }
+
+    this.lastSeemResourceVersion = result.value.object.metadata.resourceVersion;
+
+    if (result.value.type === "BOOKMARK") {
+      return this.next();
+    }
+
+    if (result.value.type === "DELETED") {
+      this.close();
+    }
+
+    return {
+      done: false,
+      value: { type: result.value.type, object: await this.parseFunction(result.value.object) },
+    };
   }
 
   async return() {

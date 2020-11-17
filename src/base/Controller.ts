@@ -47,7 +47,7 @@ export class Controller {
     this.policyRules.push(...rules);
   }
 
-  async cli(argv: string[] = process.argv) {
+  async cli(argv: string[] = process.argv.slice(2)) {
     const optionDefinitions = [{ alias: "h", description: "Display this usage guide.", name: "help", type: Boolean }];
 
     function showHelp() {
