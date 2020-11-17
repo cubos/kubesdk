@@ -39,8 +39,6 @@ export class Controller {
   async cli(argv: string[] = process.argv) {
     const optionDefinitions = [{ alias: "h", description: "Display this usage guide.", name: "help", type: Boolean }];
 
-    const options = commandLineArgs(optionDefinitions, { stopAtFirstUnknown: true, argv });
-
     function showHelp() {
       console.log(
         commandLineUsage([
@@ -60,22 +58,30 @@ export class Controller {
       );
     }
 
-    if (options.help) {
-      showHelp();
-      return;
-    }
+    try {
+      const options = commandLineArgs(optionDefinitions, { stopAtFirstUnknown: true, argv });
 
-    const args = options._unknown ?? [];
-
-    switch (args.shift()) {
-      case "install":
-        await this.cliInstall(args);
-        break;
-      case "run":
-        await this.cliRun(args);
-        break;
-      default:
+      if (options.help) {
         showHelp();
+        return;
+      }
+
+      const args = options._unknown ?? [];
+
+      switch (args.shift()) {
+        case "install":
+          await this.cliInstall(args);
+          break;
+        case "run":
+          await this.cliRun(args);
+          break;
+        default:
+          showHelp();
+      }
+    } catch (err) {
+      console.error(err);
+      // eslint-disable-next-line no-process-exit
+      process.exit(1);
     }
   }
 
