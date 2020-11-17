@@ -485,17 +485,17 @@ export const Pod = wrapNamespacedResource<PodMetadata, PodSpec, PodStatus, Pod>(
     }>;
 
     async exec(containerName: string, command: string[], options?: ExecOptions) {
-      const conn = await ClusterConnection.current().websocket(
+      const ws = await ClusterConnection.current().websocket(
         `${this.metadata.selfLink}/exec?container=${encodeURIComponent(containerName)}&command=${command
           .map(x => encodeURIComponent(x))
           .join("&command=")}&stdin=1&stdout=1&stderr=1`,
       );
 
       if (options) {
-        return new Exec(conn, options);
+        return new Exec(ws, options);
       }
 
-      return Exec.asPromise(conn);
+      return Exec.asPromise(ws);
     }
   },
 );

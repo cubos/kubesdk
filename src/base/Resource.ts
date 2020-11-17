@@ -121,6 +121,10 @@ export class Resource<MetadataT, SpecT, StatusT> implements IResource<MetadataT,
         return;
       }
 
+      if (event.type === "ADDED" || event.object.metadata.resourceVersion === this.metadata.resourceVersion) {
+        continue;
+      }
+
       this.metadata = event.object.metadata;
       this.spec = event.object.spec;
       this.status = event.object.status;
@@ -162,6 +166,10 @@ export class NamespacedResource<MetadataT, SpecT, StatusT> extends Resource<
       if (event.type === "DELETED" || event.object.metadata.uid !== this.metadata.uid) {
         yield "DELETED";
         return;
+      }
+
+      if (event.type === "ADDED" || event.object.metadata.resourceVersion === this.metadata.resourceVersion) {
+        continue;
       }
 
       this.metadata = event.object.metadata;
