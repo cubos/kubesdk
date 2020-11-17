@@ -146,7 +146,10 @@ export class ClusterConnection {
         try {
           const token = readFileSync("/var/run/secrets/kubernetes.io/serviceaccount/token", "utf-8");
           const ca = Buffer.from(
-            readFileSync("/var/run/secrets/kubernetes.io/serviceaccount/ca.crt", "utf-8").split("\n")[1],
+            readFileSync("/var/run/secrets/kubernetes.io/serviceaccount/ca.crt", "utf-8")
+              .split("\n")
+              .slice(1, -2)
+              .join(""),
             "base64",
           );
 
