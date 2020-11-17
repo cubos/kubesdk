@@ -252,9 +252,9 @@ export class Controller {
                         name: cronJob.name,
                         image: options.image,
                         args: ["run", "cronjob", cronJob.name],
-                        envFrom: this.secretEnvs.map(secretEnv => [
-                          { secretRef: { name: `${this.name}-${secretEnv.name}` } },
-                        ]),
+                        envFrom: this.secretEnvs.map(secretEnv => ({
+                          secretRef: { name: `${this.name}-${secretEnv.name}` },
+                        })),
                       },
                     ],
                     serviceAccountName: serviceAccount.metadata.name,

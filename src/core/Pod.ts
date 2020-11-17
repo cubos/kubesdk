@@ -134,17 +134,24 @@ interface Container {
             };
       }
   >;
-  envFrom?: Array<{
-    configMapRef?: {
-      name: string;
-      optional?: boolean;
-    };
-    prefix?: string;
-    secretRef?: {
-      name: string;
-      optional?: boolean;
-    };
-  }>;
+  envFrom?: Array<
+    {
+      prefix?: string;
+    } & (
+      | {
+          configMapRef: {
+            name: string;
+            optional?: boolean;
+          };
+        }
+      | {
+          secretRef: {
+            name: string;
+            optional?: boolean;
+          };
+        }
+    )
+  >;
   image: string;
   imagePullPolicy?: "Always" | "Never" | "IfNotPresent";
   lifecycle?: {
