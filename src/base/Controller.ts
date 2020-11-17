@@ -22,6 +22,8 @@ export class Controller {
 
   private policyRules: PolicyRule[] = [];
 
+  public logRequests = false;
+
   constructor(public name: string) {}
 
   addCronJob(name: string, schedule: string, func: () => Promise<void>) {
@@ -274,6 +276,7 @@ export class Controller {
 
     await new ClusterConnection({
       name: this.name,
+      logRequests: this.logRequests,
     }).use(async () => {
       switch (args.shift()) {
         case "cronjob": {
