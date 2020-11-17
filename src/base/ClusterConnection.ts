@@ -145,13 +145,7 @@ export class ClusterConnection {
       } else {
         try {
           const token = readFileSync("/var/run/secrets/kubernetes.io/serviceaccount/token", "utf-8");
-          const ca = Buffer.from(
-            readFileSync("/var/run/secrets/kubernetes.io/serviceaccount/ca.crt", "utf-8")
-              .split("\n")
-              .slice(1, -2)
-              .join(""),
-            "base64",
-          );
+          const ca = readFileSync("/var/run/secrets/kubernetes.io/serviceaccount/ca.crt");
 
           this.client = Axios.create({
             baseURL: "https://kubernetes.default",
