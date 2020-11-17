@@ -1,6 +1,7 @@
 import commandLineArgs from "command-line-args";
 import commandLineUsage from "command-line-usage";
 import { CronJob } from "../batch/CronJob";
+import { Secret } from "../core/Secret";
 import { ServiceAccount } from "../core/ServiceAccount";
 import { ClusterRole } from "../rbac/ClusterRole";
 import { ClusterRoleBinding } from "../rbac/ClusterRoleBinding";
@@ -22,6 +23,8 @@ export class Controller {
 
   private policyRules: PolicyRule[] = [];
 
+  private secretEnvs: Array<{ name: string; values: Record<string, string> }> = [];
+
   public logRequests = false;
 
   public paranoid = true;
@@ -30,6 +33,10 @@ export class Controller {
 
   addCronJob(name: string, schedule: string, func: () => Promise<void>) {
     this.cronJobs.push({ name, schedule, func });
+  }
+
+  attachSecretEnv(name: string, values: Record<string, string>) {
+    this.secretEnvs.push({ name, values });
   }
 
   attachClusterPolicyRules(rules: PolicyRule[]) {
@@ -208,6 +215,19 @@ export class Controller {
         );
       }
 
+      for (const secretEnv of this.secretEnvs) {
+        console.log("apply Secret", secretEnv.name);
+        await Secret.apply(
+          {
+            name: `${this.name}-${secretEnv.name}`,
+            namespace: options.namespace,
+          },
+          {
+            data: secretEnv.values,
+          },
+        );
+      }
+
       for (const cronJob of this.cronJobs) {
         console.log("apply CronJob", cronJob.name);
         await CronJob.apply(
@@ -231,6 +251,9 @@ export class Controller {
                         name: cronJob.name,
                         image: options.image,
                         args: ["run", "cronjob", cronJob.name],
+                        envFrom: this.secretEnvs.map(secretEnv => [
+                          { secretRef: { name: `${this.name}-${secretEnv.name}` } },
+                        ]),
                       },
                     ],
                     serviceAccountName: serviceAccount.metadata.name,
