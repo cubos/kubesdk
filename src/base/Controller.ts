@@ -27,7 +27,7 @@ export class Controller {
 
   public logRequests = false;
 
-  public paranoid = true;
+  public paranoid = false;
 
   constructor(public name: string) {}
 
