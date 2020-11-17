@@ -13,7 +13,7 @@ export function validate(schema: unknown, data: unknown) {
     throw new SchemaValidationError("invalid schema");
   }
 
-  const valid = ajv.validate(schema, data);
+  const valid = ajv.validate(schema, JSON.parse(JSON.stringify(data)));
 
   if (!valid) {
     throw new SchemaValidationError(ajv.errorsText());
