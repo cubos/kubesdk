@@ -29,7 +29,7 @@ export interface IResource<MetadataT, SpecT, StatusT> {
   delete(): Promise<this>;
   reload(): Promise<void>;
   save(): Promise<void>;
-  watch(): ResourceWatch<this>;
+  watch(): AsyncGenerator<"DELETED" | "ADDED" | "MODIFIED">;
 }
 
 export interface IStaticResource<InstanceT, MetadataT, SpecT, StatusT> {
@@ -114,22 +114,18 @@ export class Resource<MetadataT, SpecT, StatusT> implements IResource<MetadataT,
     this.status = obj.status;
   }
 
-  watch() {
-    const conn = ClusterConnection.current();
-    const resourceWatch = this.base.watch(this.metadata.name) as ResourceWatch<this>;
+  async *watch() {
+    for await (const event of this.base.watch(this.metadata.name)) {
+      if (event.type === "DELETED" || event.object.metadata.uid !== this.metadata.uid) {
+        yield "DELETED";
+        return;
+      }
 
-    resourceWatch.lastSeemResourceVersion = this.metadata.resourceVersion;
-    resourceWatch.uid = this.metadata.uid;
-    resourceWatch.parseFunction = async raw => {
-      const obj = await this.parseRawObject(conn, raw);
-
-      this.metadata = obj.metadata;
-      this.spec = obj.spec;
-      this.status = obj.status;
-      return this;
-    };
-
-    return resourceWatch;
+      this.metadata = event.object.metadata;
+      this.spec = event.object.spec;
+      this.status = event.object.status;
+      yield event.type;
+    }
   }
 }
 
@@ -161,22 +157,18 @@ export class NamespacedResource<MetadataT, SpecT, StatusT> extends Resource<
       >;
   }
 
-  watch() {
-    const conn = ClusterConnection.current();
-    const resourceWatch = this.nsbase.watch(this.metadata.namespace, this.metadata.name) as ResourceWatch<this>;
+  async *watch() {
+    for await (const event of this.nsbase.watch(this.metadata.namespace, this.metadata.name)) {
+      if (event.type === "DELETED" || event.object.metadata.uid !== this.metadata.uid) {
+        yield "DELETED";
+        return;
+      }
 
-    resourceWatch.lastSeemResourceVersion = this.metadata.resourceVersion;
-    resourceWatch.uid = this.metadata.uid;
-    resourceWatch.parseFunction = async raw => {
-      const obj = await this.parseRawObject(conn, raw);
-
-      this.metadata = obj.metadata;
-      this.spec = obj.spec;
-      this.status = obj.status;
-      return this;
-    };
-
-    return resourceWatch;
+      this.metadata = event.object.metadata;
+      this.spec = event.object.spec;
+      this.status = event.object.status;
+      yield event.type;
+    }
   }
 }
 

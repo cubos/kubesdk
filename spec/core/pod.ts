@@ -20,7 +20,8 @@ describe("Pod", () => {
       },
     );
 
-    for await (const _ of pod.watch()) {
+    for await (const eventType of pod.watch()) {
+      expect(eventType).not.toBe("DELETED");
       if (pod.status.phase !== "Pending") {
         break;
       }

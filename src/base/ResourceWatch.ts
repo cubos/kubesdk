@@ -5,14 +5,16 @@ type InternalWatchNotification<T extends IResource<unknown, unknown, unknown>> =
   | { type: "ADDED"; object: T }
   | { type: "MODIFIED"; object: T }
   | { type: "DELETED"; object: T }
-  | { type: "BOOKMARK"; object: { kind: string; apiVersion: string; metadata: { resourceVersion: string } } };
+  | { type: "BOOKMARK"; object: { kind: string; apiVersion: string; metadata: { resourceVersion: string } } }
+  | { type: "ERROR"; object: unknown };
 
 type WatchNotification<T extends IResource<unknown, unknown, unknown>> =
   | { type: "ADDED"; object: T }
   | { type: "MODIFIED"; object: T }
   | { type: "DELETED"; object: T };
 
-export class ResourceWatch<T extends IResource<unknown, unknown, unknown>> implements AsyncIterable<T | null> {
+export class ResourceWatch<T extends IResource<unknown, unknown, unknown>>
+  implements AsyncGenerator<WatchNotification<T>, undefined, undefined> {
   public lastSeemResourceVersion: string | undefined;
 
   private stream: WatchStream | undefined;
@@ -21,68 +23,68 @@ export class ResourceWatch<T extends IResource<unknown, unknown, unknown>> imple
 
   private streamIterator: AsyncIterator<InternalWatchNotification<T>, undefined> | undefined;
 
-  public uid: string | undefined;
-
   constructor(
     private conn: ClusterConnection,
     private url: string,
-    public parseFunction: (object: object) => Promise<T>,
+    private parseFunction: (object: object) => Promise<T>,
   ) {}
 
-  [Symbol.asyncIterator](): AsyncIterator<T | null, undefined> {
-    return {
-      next: async () => {
-        if (this.closed) {
-          return { done: true, value: undefined };
-        }
+  [Symbol.asyncIterator]() {
+    return this;
+  }
 
-        if (this.stream === undefined || this.streamIterator === undefined) {
-          this.stream = await this.conn.watch(this.url, this.lastSeemResourceVersion);
-          this.streamIterator = this.stream[Symbol.asyncIterator]();
-        }
+  async next(): Promise<IteratorResult<WatchNotification<T>, undefined>> {
+    if (this.closed) {
+      return { done: true, value: undefined };
+    }
 
-        try {
-          const result = await this.streamIterator.next();
+    if (this.stream === undefined || this.streamIterator === undefined) {
+      this.stream = await this.conn.watch(this.url, this.lastSeemResourceVersion);
+      this.streamIterator = this.stream[Symbol.asyncIterator]();
+    }
 
-          if (result.done === true) {
-            this.close();
-            return { done: result.done, value: undefined };
-          }
+    try {
+      const result = await this.streamIterator.next();
 
-          this.lastSeemResourceVersion = result.value.object.metadata.resourceVersion;
-
-          if (result.value.type === "BOOKMARK") {
-            return this[Symbol.asyncIterator]().next();
-          }
-
-          if (result.value.type === "DELETED" || (this.uid && result.value.object.metadata.uid !== this.uid)) {
-            this.close();
-            return {
-              done: false,
-              value: null,
-            };
-          }
-
-          return {
-            done: false,
-            value: await this.parseFunction(result.value.object),
-          };
-        } catch (err) {
-          this.stream.destroy();
-          this.stream = undefined;
-          this.streamIterator = undefined;
-          return this[Symbol.asyncIterator]().next();
-        }
-      },
-      return: async () => {
+      if (result.done === true) {
         this.close();
-        return Promise.resolve({ done: true, value: undefined });
-      },
-      throw: async () => {
+        return { done: result.done, value: undefined };
+      }
+
+      if (result.value.type === "ERROR") {
+        throw result.value.object;
+      }
+
+      this.lastSeemResourceVersion = result.value.object.metadata.resourceVersion;
+
+      if (result.value.type === "BOOKMARK") {
+        return this.next();
+      }
+
+      if (result.value.type === "DELETED") {
         this.close();
-        return Promise.resolve({ done: true, value: undefined });
-      },
-    }; // as { next(): Promise<IteratorResult<T, undefined>> };
+      }
+
+      return {
+        done: false,
+        value: { type: result.value.type, object: await this.parseFunction(result.value.object) },
+      };
+    } catch (err) {
+      this.stream.destroy();
+      this.stream = undefined;
+      this.streamIterator = undefined;
+      return this.next();
+    }
+  }
+
+  async return() {
+    this.close();
+    return Promise.resolve({ done: true, value: undefined } as const);
+  }
+
+  async throw() {
+    this.close();
+    return Promise.resolve({ done: true, value: undefined } as const);
   }
 
   close() {
