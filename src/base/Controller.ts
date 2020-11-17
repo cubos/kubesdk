@@ -27,7 +27,7 @@ export class Controller {
 
   public logRequests = false;
 
-  public paranoid = false;
+  public paranoid = Boolean(process.env.KUBESDK_PARANOID);
 
   constructor(public name: string) {}
 

@@ -163,7 +163,7 @@ export class ClusterConnection {
     }
 
     this.options = {
-      paranoid: options.paranoid ?? false,
+      paranoid: options.paranoid ?? Boolean(process.env.KUBESDK_PARANOID),
       logRequests: options.logRequests ?? false,
       name: options.name ?? "kubesdk",
     };

@@ -79,5 +79,5 @@ if (!process.env.CI) {
   }
 
   // See package.json
-  console.log("export KUBECONFIG=.spec-kubeconfig");
+  console.log("export KUBESDK_PARANOID=1; export KUBECONFIG=.spec-kubeconfig");
 }
