@@ -2,6 +2,7 @@ import * as QueryString from "querystring";
 import { LabelSelector } from "../core/types";
 import { has, throwError, validate } from "../utils";
 import { ClusterConnection } from "./ClusterConnection";
+import { ResourceListWatch } from "./ResourceListWatch";
 import { ResourceWatch } from "./ResourceWatch";
 
 export interface CreatableMetadata {
@@ -186,6 +187,7 @@ export interface StaticResource<MetadataT, SpecT, StatusT, T extends IResource<M
   watch(name: string): ResourceWatch<T>;
   delete(name: string): Promise<T>;
   list(options?: { selector?: Selector; limit?: number }): Promise<T[]>;
+  watchList(options?: { selector?: Selector }): ResourceListWatch<T>;
   create: {} extends SpecT
     ? (
         metadata: Omit<CreatableMetadata, "name"> & MetadataT & ({ generateName: string } | { name: string }),
@@ -211,6 +213,7 @@ export interface StaticNamespacedResource<
   watch(namespace: string, name: string): ResourceWatch<T>;
   delete(namespace: string, name: string): Promise<T>;
   list(options?: { namespace?: string; selector?: Selector; limit?: number }): Promise<T[]>;
+  watchList(options?: { namespace?: string; selector?: Selector }): ResourceListWatch<T>;
   create: {} extends SpecT
     ? (
         metadata: Omit<CreatableMetadata, "name"> &
@@ -295,6 +298,64 @@ function implementStaticMethods(
 
   ((klass as unknown) as Record<string, unknown>).parseRawObject = parseRawObject;
 
+  function selectorToQueryObject(selector?: Selector) {
+    const qs: Record<string, string> = {};
+
+    const labelSelector: string[] = [];
+
+    if (selector?.matchLabels) {
+      for (const [key, value] of Object.entries(selector.matchLabels)) {
+        labelSelector.push(`${key}=${value}`);
+      }
+    }
+
+    if (selector?.matchExpressions) {
+      for (const expression of selector.matchExpressions) {
+        switch (expression.operator) {
+          case "Exists":
+            labelSelector.push(`${expression.key}`);
+            break;
+          case "DoesNotExist":
+            labelSelector.push(`!${expression.key}`);
+            break;
+          case "In":
+            labelSelector.push(`${expression.key} in (${expression.values.join(",")})`);
+            break;
+          case "NotIn":
+            labelSelector.push(`${expression.key} notin (${expression.values.join(",")})`);
+            break;
+          default:
+            // Never
+            break;
+        }
+      }
+    }
+
+    if (labelSelector.length > 0) {
+      qs.labelSelector = labelSelector.join(",");
+    }
+
+    const fieldSelector: string[] = [];
+
+    if (selector?.matchFields) {
+      for (const [key, value] of Object.entries(selector.matchFields)) {
+        fieldSelector.push(`${key}==${value}`);
+      }
+    }
+
+    if (selector?.doesntMatchFields) {
+      for (const [key, value] of Object.entries(selector.doesntMatchFields)) {
+        fieldSelector.push(`${key}!=${value}`);
+      }
+    }
+
+    if (fieldSelector.length > 0) {
+      qs.fieldSelector = fieldSelector.join(",");
+    }
+
+    return qs;
+  }
+
   klass.get = async (namespaceOrName: string, name?: string) => {
     const conn = ClusterConnection.current();
     const base = apiVersion.includes("/") ? `apis` : "api";
@@ -341,6 +402,30 @@ function implementStaticMethods(
     return new ResourceWatch<typeof klass.prototype>(conn, url, async raw => parseRawObject(conn, raw));
   };
 
+  klass.watchList = (
+    options: {
+      namespace?: string;
+      selector?: Selector;
+      limit?: number;
+    } = {},
+  ) => {
+    const base = apiVersion.includes("/") ? `apis` : "api";
+    const apiUrl = `/${base}/${apiVersion}/watch/${
+      klass.isNamespaced && options.namespace ? `namespaces/${encodeURIComponent(options.namespace)}/` : ``
+    }${apiPlural}`;
+
+    const qs = selectorToQueryObject(options.selector);
+
+    if (options.limit) {
+      qs.limit = `${options.limit}`;
+    }
+
+    const conn = ClusterConnection.current();
+    const url = `${apiUrl}?${QueryString.stringify(qs)}`;
+
+    return new ResourceListWatch<typeof klass.prototype>(conn, url, async raw => parseRawObject(conn, raw));
+  };
+
   klass.delete = async (namespaceOrName: string, name?: string) => {
     const conn = ClusterConnection.current();
     const base = apiVersion.includes("/") ? `apis` : "api";
@@ -377,66 +462,10 @@ function implementStaticMethods(
       klass.isNamespaced && options.namespace ? `namespaces/${encodeURIComponent(options.namespace)}/` : ``
     }${apiPlural}`;
 
-    const qs: Record<string, string> = {};
+    const qs = selectorToQueryObject(options.selector);
 
     if (options.limit) {
       qs.limit = `${options.limit}`;
-    }
-
-    {
-      const labelSelector: string[] = [];
-
-      if (options.selector?.matchLabels) {
-        for (const [key, value] of Object.entries(options.selector.matchLabels)) {
-          labelSelector.push(`${key}=${value}`);
-        }
-      }
-
-      if (options.selector?.matchExpressions) {
-        for (const expression of options.selector.matchExpressions) {
-          switch (expression.operator) {
-            case "Exists":
-              labelSelector.push(`${expression.key}`);
-              break;
-            case "DoesNotExist":
-              labelSelector.push(`!${expression.key}`);
-              break;
-            case "In":
-              labelSelector.push(`${expression.key} in (${expression.values.join(",")})`);
-              break;
-            case "NotIn":
-              labelSelector.push(`${expression.key} notin (${expression.values.join(",")})`);
-              break;
-            default:
-              // Never
-              break;
-          }
-        }
-      }
-
-      if (labelSelector.length > 0) {
-        qs.labelSelector = labelSelector.join(",");
-      }
-    }
-
-    {
-      const fieldSelector: string[] = [];
-
-      if (options.selector?.matchFields) {
-        for (const [key, value] of Object.entries(options.selector.matchFields)) {
-          fieldSelector.push(`${key}==${value}`);
-        }
-      }
-
-      if (options.selector?.doesntMatchFields) {
-        for (const [key, value] of Object.entries(options.selector.doesntMatchFields)) {
-          fieldSelector.push(`${key}!=${value}`);
-        }
-      }
-
-      if (fieldSelector.length > 0) {
-        qs.fieldSelector = fieldSelector.join(",");
-      }
     }
 
     const conn = ClusterConnection.current();

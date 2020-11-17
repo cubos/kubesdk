@@ -335,7 +335,7 @@ export class ClusterConnection {
 
   async watch(url: string, resourceVersion?: string) {
     const response = await this.request<IncomingMessage>({
-      url: url + (resourceVersion ? `?resourceVersion=${resourceVersion}` : ""),
+      url: url + (resourceVersion ? `${url.includes("?") ? "&" : "?"}resourceVersion=${resourceVersion}` : ""),
       method: "get",
       responseType: "stream",
       headers: {
