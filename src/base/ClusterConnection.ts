@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from "async_hooks";
 import Axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from "axios";
 import * as AxiosLogger from "axios-logger";
+import axiosRetry from "axios-retry";
 import { accessSync, readFileSync } from "fs";
 import { IncomingMessage, OutgoingHttpHeaders } from "http";
 import { Agent } from "https";
@@ -161,6 +162,8 @@ export class ClusterConnection {
         }
       }
     }
+
+    axiosRetry(this.client, { retryDelay: axiosRetry.exponentialDelay, retries: 5 });
 
     this.options = {
       paranoid: options.paranoid ?? Boolean(process.env.KUBESDK_PARANOID),
