@@ -223,7 +223,8 @@ export class Controller {
             namespace: options.namespace,
           },
           {
-            data: secretEnv.values,
+            data: {},
+            stringData: secretEnv.values,
           },
         );
       }
