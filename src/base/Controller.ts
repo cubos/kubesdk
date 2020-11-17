@@ -24,6 +24,8 @@ export class Controller {
 
   public logRequests = false;
 
+  public paranoid = true;
+
   constructor(public name: string) {}
 
   addCronJob(name: string, schedule: string, func: () => Promise<void>) {
@@ -277,6 +279,7 @@ export class Controller {
     await new ClusterConnection({
       name: this.name,
       logRequests: this.logRequests,
+      paranoid: this.paranoid,
     }).use(async () => {
       switch (args.shift()) {
         case "cronjob": {
