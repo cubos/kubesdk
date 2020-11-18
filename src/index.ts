@@ -4,6 +4,7 @@ export { KubernetesError } from "./base/KubernetesError";
 export { CronJob } from "./batch/CronJob";
 export { Job } from "./batch/Job";
 export { Namespace } from "./core/Namespace";
+export { Node } from "./core/Node";
 export { PersistentVolumeClaim } from "./core/PersistentVolumeClaim";
 export { Pod } from "./core/Pod";
 export { Secret } from "./core/Secret";
