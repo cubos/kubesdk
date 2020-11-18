@@ -17,7 +17,7 @@ export interface NodeSpec {
   podCIDR?: string;
   podCIDRs?: string[];
   providerID?: string;
-  taints: Array<{
+  taints?: Array<{
     effect: string;
     key: string;
     timeAdded?: string;
@@ -48,7 +48,7 @@ export interface NodeStatus {
     message?: string;
     reason?: string;
     status: "True" | "False" | "Unknown";
-    type: "Ready" | "MemoryPressure" | "DiskPressure" | "NetworkUnavailable";
+    type: "Ready" | "MemoryPressure" | "DiskPressure" | "PIDPressure" | "NetworkUnavailable";
   }>;
   config?: {
     active?: NodeConfigSource;
@@ -56,7 +56,7 @@ export interface NodeStatus {
     error?: string;
     lastKnownGood?: NodeConfigSource;
   };
-  daemonEndpoints?: {
+  daemonEndpoints: {
     kubeletEndpoint: {
       Port: number;
     };
@@ -65,7 +65,7 @@ export interface NodeStatus {
     names: string[];
     sizeBytes?: number;
   }>;
-  nodeInfo?: {
+  nodeInfo: {
     architecture: string;
     bootID: string;
     containerRuntimeVersion: string;
