@@ -30,6 +30,7 @@ export interface IResource<MetadataT, SpecT, StatusT> {
   delete(): Promise<this>;
   reload(): Promise<void>;
   save(): Promise<void>;
+  saveStatus(): Promise<void>;
   watch(): AsyncGenerator<"DELETED" | "ADDED" | "MODIFIED">;
 }
 
@@ -102,6 +103,26 @@ export class Resource<MetadataT, SpecT, StatusT> implements IResource<MetadataT,
 
     const conn = ClusterConnection.current();
     const raw = await conn.put(this.metadata.selfLink, {
+      apiVersion,
+      kind,
+      metadata: this.metadata,
+      status: this.status,
+      ...(this.base.hasInlineSpec ? this.spec : { spec: this.spec }),
+    });
+    const obj = await this.parseRawObject(conn, raw);
+
+    this.metadata = obj.metadata;
+    this.spec = obj.spec;
+    this.status = obj.status;
+  }
+
+  async saveStatus() {
+    const kind = this.base.kind ?? throwError(new Error(`Please specify 'kind' for ${this.base.name}`));
+    const apiVersion =
+      this.base.apiVersion ?? throwError(new Error(`Please specify 'apiVersion' for ${this.base.name}`));
+
+    const conn = ClusterConnection.current();
+    const raw = await conn.put(`${this.metadata.selfLink}/status`, {
       apiVersion,
       kind,
       metadata: this.metadata,

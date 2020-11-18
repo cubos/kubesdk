@@ -18,7 +18,7 @@ export interface NodeSpec {
   podCIDRs?: string[];
   providerID?: string;
   taints?: Array<{
-    effect: string;
+    effect: "NoSchedule" | "PreferNoSchedule" | "NoExecute";
     key: string;
     timeAdded?: string;
     value?: string;
