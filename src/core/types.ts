@@ -13,6 +13,11 @@ export interface LabelSelector {
   matchLabels?: Record<string, string>;
 }
 
+export interface SecretReference {
+  name: string;
+  namespace: string;
+}
+
 export interface LocalObjectReference {
   name: string;
 }
@@ -40,3 +45,109 @@ export interface ObjectReference<Kind extends string = string, ApiVersion extend
   resourceVersion: string;
   uid: string;
 }
+
+export interface ObjectFieldSelector {
+  apiVersion?: string;
+  fieldPath: string;
+}
+
+export interface ResourceFieldSelector {
+  containerName: string;
+  divisor: string;
+  resource: string;
+}
+
+export type GenericVolumeSource =
+  | {
+      awsElasticBlockStore: {
+        fsType?: string;
+        partition?: number;
+        readOnly?: boolean;
+        volumeID: string;
+      };
+    }
+  | {
+      azureDisk: {
+        cachingMode?: "None" | "ReadOnly" | "ReadWrite";
+        diskName: "string";
+        diskURI: "string";
+        fsType?: "string";
+        kind?: "Shared" | "Dedicated" | "Managed";
+        readOnly?: boolean;
+      };
+    }
+  | {
+      fc: {
+        fsType?: string;
+        lun?: number;
+        readOnly?: boolean;
+        targetWWNs?: string[];
+        wwids?: string[];
+      };
+    }
+  | {
+      flocker: {
+        datasetName?: string;
+        datasetUUID?: string;
+      };
+    }
+  | {
+      gcePersistentDisk: {
+        fsType?: string;
+        partition?: number;
+        pdName: string;
+        readOnly?: boolean;
+      };
+    }
+  | {
+      hostPath: {
+        path: string;
+        type?:
+          | ""
+          | "DirectoryOrCreate"
+          | "Directory"
+          | "FileOrCreate"
+          | "File"
+          | "Socket"
+          | "CharDevice"
+          | "BlockDevice";
+      };
+    }
+  | {
+      nfs: {
+        path: string;
+        readOnly?: boolean;
+        server: string;
+      };
+    }
+  | {
+      photonPersistentDisk: {
+        fsType?: string;
+        pdID: string;
+      };
+    }
+  | {
+      portworxVolume: {
+        fsType?: string;
+        readOnly?: boolean;
+        volumeID: string;
+      };
+    }
+  | {
+      quobyte: {
+        group?: string;
+        readOnly?: boolean;
+        registry: string;
+        tenant?: string;
+        user?: string;
+        volume: string;
+      };
+    }
+  | {
+      vsphereVolume: {
+        fsType?: string;
+        storagePolicyID?: string;
+        storagePolicyName?: string;
+        volumePath: string;
+      };
+    };

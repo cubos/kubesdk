@@ -1,7 +1,14 @@
 import { ClusterConnection } from "../base/ClusterConnection";
 import { Exec, ExecOptions } from "../base/Exec";
 import { INamespacedResource, NamespacedResource, wrapNamespacedResource } from "../base/Resource";
-import { Condition, LabelSelector, LocalObjectReference } from "./types";
+import {
+  Condition,
+  GenericVolumeSource,
+  LabelSelector,
+  LocalObjectReference,
+  ObjectFieldSelector,
+  ResourceFieldSelector,
+} from "./types";
 
 export interface PodMetadata {}
 
@@ -208,24 +215,34 @@ interface KeyToPath {
 export type Volume = {
   name: string;
 } & (
-  | // | {
-  /*
-   *     awsElasticBlockStore: AWSElasticBlockStoreVolumeSource;
-   *   }
-   * | {
-   *     azureDisk: AzureDiskVolumeSource;
-   *   }
-   * | {
-   *     azureFile: AzureFileVolumeSource;
-   *   }
-   * | {
-   *     cephfs: CephFSVolumeSource;
-   *   }
-   * | {
-   *     cinder: CinderVolumeSource;
-   *   }
-   */
-  {
+  | GenericVolumeSource
+  | {
+      azureFile: {
+        readOnly?: boolean;
+        secretName: string;
+        secretNamespace?: string;
+        shareName: string;
+      };
+    }
+  | {
+      cephfs: {
+        monitors: string[];
+        path?: string;
+        readOnly?: boolean;
+        secretFile?: string;
+        secretRef?: LocalObjectReference;
+        user?: string;
+      };
+    }
+  | {
+      cinder: {
+        fsType?: string;
+        readOnly?: boolean;
+        secretRef?: LocalObjectReference;
+        volumeID: string;
+      };
+    }
+  | {
       configMap: {
         defaultMode?: string;
         items: KeyToPath[];
@@ -233,72 +250,146 @@ export type Volume = {
         optional?: boolean;
       };
     }
-  /*
-   * | {
-   *     downwardAPI: DownwardAPIVolumeSource;
-   *   }
-   */
+  | {
+      csi: {
+        driver: string;
+        fsType?: string;
+        nodePublishSecretRef?: LocalObjectReference;
+        readOnly?: boolean;
+        volumeAttributes?: Record<string, string>;
+      };
+    }
+  | {
+      downwardAPI: {
+        defaultMode?: number;
+        items?: Array<{
+          fieldRef: ObjectFieldSelector;
+          mode: number;
+          path: string;
+          resourceFieldRef: ResourceFieldSelector;
+        }>;
+      };
+    }
   | {
       emptyDir: {
         medium?: "" | "Memory";
         sizeLimit?: number | string;
       };
     }
-  /*
-   * | {
-   *     fc: FCVolumeSource;
-   *   }
-   * | {
-   *     flexVolume: FlexVolumeSource;
-   *   }
-   * | {
-   *     flocker: FlockerVolumeSource;
-   *   }
-   * | {
-   *     gcePersistentDisk: GCEPersistentDiskVolumeSource;
-   *   }
-   * | {
-   *     gitRepo: GitRepoVolumeSource;
-   *   }
-   * | {
-   *     glusterfs: GlusterfsVolumeSource;
-   *   }
-   * | {
-   *     hostPath: HostPathVolumeSource;
-   *   }
-   * | {
-   *     iscsi: ISCSIVolumeSource;
-   *   }
-   * | {
-   *     nfs: NFSVolumeSource;
-   *   }
-   */
+  | {
+      flexVolume: {
+        driver: string;
+        fsType?: string;
+        options?: Record<string, string>;
+        readOnly?: boolean;
+        secretRef?: LocalObjectReference;
+      };
+    }
+  | {
+      gitRepo: {
+        directory?: string;
+        repository: string;
+        revision?: string;
+      };
+    }
+  | {
+      glusterfs: {
+        endpoints: string;
+        path: string;
+        readOnly?: boolean;
+      };
+    }
+  | {
+      iscsi: {
+        chapAuthDiscovery?: boolean;
+        chapAuthSession?: boolean;
+        fsType?: string;
+        initiatorName?: string;
+        iqn: string;
+        iscsiInterface?: string;
+        lun: number;
+        portals?: string[];
+        readOnly?: boolean;
+        secretRef?: LocalObjectReference;
+        targetPortal: string;
+      };
+    }
   | {
       persistentVolumeClaim: {
         claimName: string;
         readonly?: boolean;
       };
     }
-  /*
-   * | {
-   *     photonPersistentDisk: PhotonPersistentDiskVolumeSource;
-   *   }
-   * | {
-   *     portworxVolume: PortworxVolumeSource;
-   *   }
-   * | {
-   *     projected: ProjectedVolumeSource;
-   *   }
-   * | {
-   *     quobyte: QuobyteVolumeSource;
-   *   }
-   * | {
-   *     rbd: RBDVolumeSource;
-   *   }
-   * | {
-   *     scaleIO: ScaleIOVolumeSource;
-   *   }
-   */
+  | {
+      projected: {
+        defaultMode?: number;
+        sources: Array<
+          | {
+              configMap: {
+                name: string;
+                items: Array<{
+                  key: string;
+                  mode?: number;
+                  path: string;
+                }>;
+                optional?: boolean;
+              };
+            }
+          | {
+              downwardAPI: {
+                fieldRef: ObjectFieldSelector;
+                mode?: number;
+                path: string;
+                resourceFieldRef: ResourceFieldSelector;
+              };
+            }
+          | {
+              secret: {
+                name: string;
+                items: Array<{
+                  key: string;
+                  mode?: number;
+                  path: string;
+                }>;
+                optional?: boolean;
+              };
+            }
+          | {
+              serviceAccountToken: {
+                audience?: string;
+                expirationSeconds?: number;
+                path: string;
+              };
+            }
+        >;
+      };
+    }
+  | {
+      rbd: {
+        fsType?: string;
+        image: string;
+        keyring?: string;
+        monitors: string[];
+        pool?: string;
+        readOnly?: boolean;
+        secretRef?: LocalObjectReference;
+        user?: string;
+      };
+    }
+  | {
+      scaleIO: {
+        fsType?: string;
+        gateway: string;
+        protectionDomain?: string;
+        readOnly?: boolean;
+        secretRef: LocalObjectReference;
+        sslEnabled?: boolean;
+        storageMode?: "ThickProvisioned" | "ThinProvisioned";
+        storagePool?: string;
+        system: string;
+        volumeName?: string;
+      };
+    }
   | {
       secret: {
         defaultMode?: string;
@@ -307,14 +398,15 @@ export type Volume = {
         secretName: string;
       };
     }
-  /*
-   * | {
-   *     storageos: StorageOSVolumeSource;
-   *   }
-   * | {
-   *     vsphereVolume: VsphereVirtualDiskVolumeSource;
-   *   }
-   */
+  | {
+      storageos: {
+        fsType?: string;
+        readOnly?: boolean;
+        secretRef?: LocalObjectReference;
+        volumeName?: string;
+        volumeNamespace?: string;
+      };
+    }
 );
 
 export interface PodSpec {
