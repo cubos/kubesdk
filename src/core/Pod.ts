@@ -6,6 +6,8 @@ import {
   GenericVolumeSource,
   LabelSelector,
   LocalObjectReference,
+  NodeSelector,
+  NodeSelectorTerm,
   ObjectFieldSelector,
   ResourceFieldSelector,
 } from "./types";
@@ -16,17 +18,6 @@ interface PodAffinityTerm {
   labelSelector?: LabelSelector;
   namespaces: string[];
   topologyKey: string;
-}
-
-interface NodeSelectorRequirement {
-  key: string;
-  operator: "In" | "NotIn" | "Exists" | "DoesNotExist" | "Gt" | "Lt";
-  values: string[];
-}
-
-interface NodeSelectorTerm {
-  matchExpressions?: NodeSelectorRequirement[];
-  matchFields?: NodeSelectorRequirement[];
 }
 
 type Handler =
@@ -417,9 +408,7 @@ export interface PodSpec {
         preference?: NodeSelectorTerm;
         weight: number;
       }>;
-      requiredDuringSchedulingIgnoredDuringExecution?: {
-        nodeSelectorTerms?: NodeSelectorTerm[];
-      };
+      requiredDuringSchedulingIgnoredDuringExecution?: NodeSelector;
     };
     podAffinity?: {
       preferredDuringSchedulingIgnoredDuringExecution?: Array<{

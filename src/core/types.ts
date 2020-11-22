@@ -151,3 +151,18 @@ export type GenericVolumeSource =
         volumePath: string;
       };
     };
+
+interface NodeSelectorRequirement {
+  key: string;
+  operator: "In" | "NotIn" | "Exists" | "DoesNotExist" | "Gt" | "Lt";
+  values: string[];
+}
+
+export interface NodeSelector {
+  nodeSelectorTerms?: NodeSelectorTerm[];
+}
+
+export interface NodeSelectorTerm {
+  matchExpressions?: NodeSelectorRequirement[];
+  matchFields?: NodeSelectorRequirement[];
+}

@@ -1,6 +1,5 @@
 import { INamespacedResource, NamespacedResource, wrapNamespacedResource } from "../base/Resource";
-import { GenericVolumeSource, ObjectReference, SecretReference } from "./types";
-import { NodeSelector } from "./_types";
+import { GenericVolumeSource, NodeSelector, ObjectReference, SecretReference } from "./types";
 
 export interface PersistentVolumeMetadata {}
 
