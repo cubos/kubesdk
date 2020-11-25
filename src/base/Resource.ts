@@ -112,21 +112,25 @@ export class Resource<MetadataT, SpecT, StatusT, KindT extends string, ApiVersio
     this.status = obj.status;
   }
 
-  async save() {
+  toJSON() {
     const kind =
       (this.base.kind as string | null) ?? throwError(new Error(`Please specify 'kind' for ${this.base.name}`));
     const apiVersion =
       (this.base.apiVersion as string | null) ??
       throwError(new Error(`Please specify 'apiVersion' for ${this.base.name}`));
 
-    const conn = ClusterConnection.current();
-    const raw = await conn.put(this.metadata.selfLink, {
+    return {
       apiVersion,
       kind,
       metadata: this.metadata,
       status: this.status,
       ...(this.base.hasInlineSpec ? this.spec : { spec: this.spec }),
-    });
+    };
+  }
+
+  async save() {
+    const conn = ClusterConnection.current();
+    const raw = await conn.put(this.metadata.selfLink, this.toJSON());
     const obj = await this.parseRawObject(conn, raw);
 
     this.metadata = obj.metadata;
@@ -135,20 +139,8 @@ export class Resource<MetadataT, SpecT, StatusT, KindT extends string, ApiVersio
   }
 
   async saveStatus() {
-    const kind =
-      (this.base.kind as string | null) ?? throwError(new Error(`Please specify 'kind' for ${this.base.name}`));
-    const apiVersion =
-      (this.base.apiVersion as string | null) ??
-      throwError(new Error(`Please specify 'apiVersion' for ${this.base.name}`));
-
     const conn = ClusterConnection.current();
-    const raw = await conn.put(`${this.metadata.selfLink}/status`, {
-      apiVersion,
-      kind,
-      metadata: this.metadata,
-      status: this.status,
-      ...(this.base.hasInlineSpec ? this.spec : { spec: this.spec }),
-    });
+    const raw = await conn.put(`${this.metadata.selfLink}/status`, this.toJSON());
     const obj = await this.parseRawObject(conn, raw);
 
     this.metadata = obj.metadata;
