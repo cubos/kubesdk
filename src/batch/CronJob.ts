@@ -30,10 +30,10 @@ interface CronJob extends INamespacedResource<CronJobMetadata, CronJobSpec, Cron
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const CronJob = wrapNamespacedResource<CronJobMetadata, CronJobSpec, CronJobStatus, CronJob>(
   class extends NamespacedResource<CronJobMetadata, CronJobSpec, CronJobStatus> {
-    protected static kind = "CronJob";
+    static kind = "CronJob";
 
     protected static apiPlural = "cronjobs";
 
-    protected static apiVersion = "batch/v1beta1";
+    static apiVersion = "batch/v1beta1";
   },
 );

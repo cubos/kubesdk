@@ -14,11 +14,11 @@ interface ConfigMap extends INamespacedResource<ConfigMapMetadata, ConfigMapSpec
 export const ConfigMap = wrapNamespacedResource<ConfigMapMetadata, ConfigMapSpec, ConfigMapStatus, ConfigMap>(
   // eslint-disable-next-line no-shadow
   class ConfigMap extends NamespacedResource<ConfigMapMetadata, ConfigMapSpec, ConfigMapStatus> {
-    protected static kind = "ConfigMap";
+    static kind = "ConfigMap";
 
     protected static apiPlural = "configmaps";
 
-    protected static apiVersion = "v1";
+    static apiVersion = "v1";
 
     protected static hasInlineSpec = true;
   },

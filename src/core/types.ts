@@ -28,14 +28,18 @@ export interface TypedLocalObjectReference<Kind extends string = string, ApiGrou
   apiGroup: ApiGroup;
 }
 
-export interface Condition<Type extends string> {
+export type Condition<Type extends string> = {
   lastProbeTime: string;
   lastTransitionTime: string;
-  message: string;
-  reason: string;
-  status: "True" | "False" | "Unknown";
   type: Type;
-}
+} & (
+  | { status: "True" }
+  | {
+      status: "False" | "Unknown";
+      message: string;
+      reason: string;
+    }
+);
 export interface ObjectReference<Kind extends string = string, ApiVersion extends string = string> {
   apiVersion: ApiVersion;
   fieldPath: string;

@@ -22,19 +22,23 @@ export const ClusterRoleBinding = wrapResource<
   ClusterRoleBindingMetadata,
   ClusterRoleBindingSpec,
   ClusterRoleBindingStatus,
-  ClusterRoleBinding
+  ClusterRoleBinding,
+  "ClusterRoleBinding",
+  "rbac.authorization.k8s.io/v1"
 >(
   // eslint-disable-next-line no-shadow
   class ClusterRoleBinding extends Resource<
     ClusterRoleBindingMetadata,
     ClusterRoleBindingSpec,
-    ClusterRoleBindingStatus
+    ClusterRoleBindingStatus,
+    "ClusterRoleBinding",
+    "rbac.authorization.k8s.io/v1"
   > {
-    protected static kind = "ClusterRoleBinding";
+    static kind = "ClusterRoleBinding";
 
     protected static apiPlural = "clusterrolebindings";
 
-    protected static apiVersion = "rbac.authorization.k8s.io/v1";
+    static apiVersion = "rbac.authorization.k8s.io/v1";
 
     protected static hasInlineSpec = true;
   },

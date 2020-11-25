@@ -19,15 +19,23 @@ export const ServiceAccount = wrapNamespacedResource<
   ServiceAccountMetadata,
   ServiceAccountSpec,
   ServiceAccountStatus,
-  ServiceAccount
+  ServiceAccount,
+  "ServiceAccount",
+  "v1"
 >(
   // eslint-disable-next-line no-shadow
-  class ServiceAccount extends NamespacedResource<ServiceAccountMetadata, ServiceAccountSpec, ServiceAccountStatus> {
-    protected static kind = "ServiceAccount";
+  class ServiceAccount extends NamespacedResource<
+    ServiceAccountMetadata,
+    ServiceAccountSpec,
+    ServiceAccountStatus,
+    "ServiceAccount",
+    "v1"
+  > {
+    static kind = "ServiceAccount";
 
     protected static apiPlural = "serviceaccounts";
 
-    protected static apiVersion = "v1";
+    static apiVersion = "v1";
 
     protected static hasInlineSpec = true;
   },

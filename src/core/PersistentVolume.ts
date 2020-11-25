@@ -143,18 +143,22 @@ export const PersistentVolume = wrapNamespacedResource<
   PersistentVolumeMetadata,
   PersistentVolumeSpec,
   PersistentVolumeStatus,
-  PersistentVolume
+  PersistentVolume,
+  "PersistentVolume",
+  "v1"
 >(
   // eslint-disable-next-line no-shadow
   class PersistentVolume extends NamespacedResource<
     PersistentVolumeMetadata,
     PersistentVolumeSpec,
-    PersistentVolumeStatus
+    PersistentVolumeStatus,
+    "PersistentVolume",
+    "v1"
   > {
-    protected static kind = "PersistentVolume";
+    static kind = "PersistentVolume";
 
     protected static apiPlural = "persistentvolumes";
 
-    protected static apiVersion = "v1";
+    static apiVersion = "v1";
   },
 );

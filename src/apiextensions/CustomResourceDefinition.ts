@@ -71,9 +71,9 @@ export interface CustomResourceDefinitionStatus {
   >;
 }
 
-interface CustomResourceDefinitionNames {
+export interface CustomResourceDefinitionNames<KindT extends string = string> {
   categories?: string[];
-  kind: string;
+  kind: KindT;
   listKind?: string;
   plural: string;
   shortNames?: string[];
@@ -104,10 +104,10 @@ export const CustomResourceDefinition = wrapResource<
     CustomResourceDefinitionSpec,
     CustomResourceDefinitionStatus
   > {
-    protected static kind = "CustomResourceDefinition";
+    static kind = "CustomResourceDefinition";
 
     protected static apiPlural = "customresourcedefinitions";
 
-    protected static apiVersion = "apiextensions.k8s.io/v1";
+    static apiVersion = "apiextensions.k8s.io/v1";
   },
 );

@@ -34,18 +34,22 @@ export const PersistentVolumeClaim = wrapNamespacedResource<
   PersistentVolumeClaimMetadata,
   PersistentVolumeClaimSpec,
   PersistentVolumeClaimStatus,
-  PersistentVolumeClaim
+  PersistentVolumeClaim,
+  "PersistentVolumeClaim",
+  "v1"
 >(
   // eslint-disable-next-line no-shadow
   class PersistentVolumeClaim extends NamespacedResource<
     PersistentVolumeClaimMetadata,
     PersistentVolumeClaimSpec,
-    PersistentVolumeClaimStatus
+    PersistentVolumeClaimStatus,
+    "PersistentVolumeClaim",
+    "v1"
   > {
-    protected static kind = "PersistentVolumeClaim";
+    static kind = "PersistentVolumeClaim";
 
     protected static apiPlural = "persistentvolumeclaims";
 
-    protected static apiVersion = "v1";
+    static apiVersion = "v1";
   },
 );

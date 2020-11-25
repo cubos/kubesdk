@@ -88,13 +88,13 @@ export interface NodeStatus {
 interface Node extends IResource<NodeMetadata, NodeSpec, NodeStatus> {}
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export const Node = wrapResource<NodeMetadata, NodeSpec, NodeStatus, Node>(
+export const Node = wrapResource<NodeMetadata, NodeSpec, NodeStatus, Node, "Node", "v1">(
   // eslint-disable-next-line no-shadow
-  class Node extends Resource<NodeMetadata, NodeSpec, NodeStatus> {
-    protected static kind = "Node";
+  class Node extends Resource<NodeMetadata, NodeSpec, NodeStatus, "Node", "v1"> {
+    static kind = "Node";
 
     protected static apiPlural = "nodes";
 
-    protected static apiVersion = "v1";
+    static apiVersion = "v1";
   },
 );

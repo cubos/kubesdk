@@ -13,14 +13,14 @@ export interface SecretStatus {}
 interface Secret extends INamespacedResource<SecretMetadata, SecretSpec, SecretStatus> {}
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export const Secret = wrapNamespacedResource<SecretMetadata, SecretSpec, SecretStatus, Secret>(
+export const Secret = wrapNamespacedResource<SecretMetadata, SecretSpec, SecretStatus, Secret, "Secret", "v1">(
   // eslint-disable-next-line no-shadow
-  class Secret extends NamespacedResource<SecretMetadata, SecretSpec, SecretStatus> {
-    protected static kind = "Secret";
+  class Secret extends NamespacedResource<SecretMetadata, SecretSpec, SecretStatus, "Secret", "v1"> {
+    static kind = "Secret";
 
     protected static apiPlural = "secrets";
 
-    protected static apiVersion = "v1";
+    static apiVersion = "v1";
 
     protected static hasInlineSpec = true;
   },

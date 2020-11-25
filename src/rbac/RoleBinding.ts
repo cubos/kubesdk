@@ -17,14 +17,27 @@ export interface RoleBindingStatus {}
 interface RoleBinding extends INamespacedResource<RoleBindingMetadata, RoleBindingSpec, RoleBindingStatus> {}
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export const RoleBinding = wrapNamespacedResource<RoleBindingMetadata, RoleBindingSpec, RoleBindingStatus, RoleBinding>(
+export const RoleBinding = wrapNamespacedResource<
+  RoleBindingMetadata,
+  RoleBindingSpec,
+  RoleBindingStatus,
+  RoleBinding,
+  "RoleBinding",
+  "rbac.authorization.k8s.io/v1"
+>(
   // eslint-disable-next-line no-shadow
-  class RoleBinding extends NamespacedResource<RoleBindingMetadata, RoleBindingSpec, RoleBindingStatus> {
-    protected static kind = "RoleBinding";
+  class RoleBinding extends NamespacedResource<
+    RoleBindingMetadata,
+    RoleBindingSpec,
+    RoleBindingStatus,
+    "RoleBinding",
+    "rbac.authorization.k8s.io/v1"
+  > {
+    static kind = "RoleBinding";
 
     protected static apiPlural = "rolebindings";
 
-    protected static apiVersion = "rbac.authorization.k8s.io/v1";
+    static apiVersion = "rbac.authorization.k8s.io/v1";
 
     protected static hasInlineSpec = true;
   },

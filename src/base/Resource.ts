@@ -43,7 +43,8 @@ export interface IStaticResource<InstanceT, MetadataT, SpecT, StatusT> {
   ): InstanceT;
 }
 
-export class Resource<MetadataT, SpecT, StatusT> implements IResource<MetadataT, SpecT, StatusT> {
+export class Resource<MetadataT, SpecT, StatusT, KindT extends string, ApiVersionT extends string>
+  implements IResource<MetadataT, SpecT, StatusT> {
   constructor(
     public metadata: CreatableMetadata & ExtraMetadata & MetadataT,
     public spec: SpecT & BasicResourceSpec,
@@ -52,9 +53,9 @@ export class Resource<MetadataT, SpecT, StatusT> implements IResource<MetadataT,
 
   protected static isNamespaced = false;
 
-  protected static kind: string | null = null;
+  static kind: string | null = null;
 
-  protected static apiVersion: string | null = null;
+  static apiVersion: string | null = null;
 
   protected static apiPlural: string | null = null;
 
@@ -63,15 +64,30 @@ export class Resource<MetadataT, SpecT, StatusT> implements IResource<MetadataT,
   private static parseRawObject: (
     conn: ClusterConnection,
     obj: unknown,
-  ) => Promise<Resource<unknown, unknown, unknown>>;
+  ) => Promise<Resource<unknown, unknown, unknown, string, string>>;
 
   protected async parseRawObject(conn: ClusterConnection, obj: unknown): Promise<this> {
     return (await this.base.parseRawObject(conn, obj)) as this;
   }
 
-  private get base(): typeof Resource & StaticResource<MetadataT, SpecT, StatusT, Resource<MetadataT, SpecT, StatusT>> {
+  private get base(): typeof Resource &
+    StaticResource<
+      MetadataT,
+      SpecT,
+      StatusT,
+      Resource<MetadataT, SpecT, StatusT, KindT, ApiVersionT>,
+      KindT,
+      ApiVersionT
+    > {
     return this.constructor as typeof Resource &
-      StaticResource<MetadataT, SpecT, StatusT, Resource<MetadataT, SpecT, StatusT>>;
+      StaticResource<
+        MetadataT,
+        SpecT,
+        StatusT,
+        Resource<MetadataT, SpecT, StatusT, KindT, ApiVersionT>,
+        KindT,
+        ApiVersionT
+      >;
   }
 
   async delete() {
@@ -97,9 +113,11 @@ export class Resource<MetadataT, SpecT, StatusT> implements IResource<MetadataT,
   }
 
   async save() {
-    const kind = this.base.kind ?? throwError(new Error(`Please specify 'kind' for ${this.base.name}`));
+    const kind =
+      (this.base.kind as string | null) ?? throwError(new Error(`Please specify 'kind' for ${this.base.name}`));
     const apiVersion =
-      this.base.apiVersion ?? throwError(new Error(`Please specify 'apiVersion' for ${this.base.name}`));
+      (this.base.apiVersion as string | null) ??
+      throwError(new Error(`Please specify 'apiVersion' for ${this.base.name}`));
 
     const conn = ClusterConnection.current();
     const raw = await conn.put(this.metadata.selfLink, {
@@ -117,9 +135,11 @@ export class Resource<MetadataT, SpecT, StatusT> implements IResource<MetadataT,
   }
 
   async saveStatus() {
-    const kind = this.base.kind ?? throwError(new Error(`Please specify 'kind' for ${this.base.name}`));
+    const kind =
+      (this.base.kind as string | null) ?? throwError(new Error(`Please specify 'kind' for ${this.base.name}`));
     const apiVersion =
-      this.base.apiVersion ?? throwError(new Error(`Please specify 'apiVersion' for ${this.base.name}`));
+      (this.base.apiVersion as string | null) ??
+      throwError(new Error(`Please specify 'apiVersion' for ${this.base.name}`));
 
     const conn = ClusterConnection.current();
     const raw = await conn.put(`${this.metadata.selfLink}/status`, {
@@ -166,11 +186,13 @@ export interface INamespacedResource<MetadataT, SpecT, StatusT>
 export interface IStaticNamespacedResource<InstanceT, MetadataT, SpecT, StatusT>
   extends IStaticResource<InstanceT, MetadataT & { namespace: string }, SpecT, StatusT> {}
 
-export class NamespacedResource<MetadataT, SpecT, StatusT> extends Resource<
-  MetadataT & { namespace: string },
+export class NamespacedResource<
+  MetadataT,
   SpecT,
-  StatusT
-> {
+  StatusT,
+  KindT extends string,
+  ApiVersionT extends string
+> extends Resource<MetadataT & { namespace: string }, SpecT, StatusT, KindT, ApiVersionT> {
   protected static isNamespaced = true;
 
   private get nsbase() {
@@ -179,7 +201,9 @@ export class NamespacedResource<MetadataT, SpecT, StatusT> extends Resource<
         MetadataT & { namespace: string },
         SpecT,
         StatusT,
-        Resource<MetadataT & { namespace: string }, SpecT, StatusT>
+        Resource<MetadataT & { namespace: string }, SpecT, StatusT, KindT, ApiVersionT>,
+        KindT,
+        ApiVersionT
       >;
   }
 
@@ -203,7 +227,16 @@ export class NamespacedResource<MetadataT, SpecT, StatusT> extends Resource<
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export interface StaticResource<MetadataT, SpecT, StatusT, T extends IResource<MetadataT, SpecT, StatusT>> {
+export interface StaticResource<
+  MetadataT,
+  SpecT,
+  StatusT,
+  T extends IResource<MetadataT, SpecT, StatusT>,
+  KindT extends string,
+  ApiVersionT extends string
+> {
+  kind: KindT;
+  apiVersion: ApiVersionT;
   get(name: string): Promise<T>;
   watch(name: string): ResourceWatch<T>;
   delete(name: string): Promise<T>;
@@ -228,8 +261,12 @@ export interface StaticNamespacedResource<
   MetadataT,
   SpecT,
   StatusT,
-  T extends INamespacedResource<MetadataT, SpecT, StatusT>
+  T extends INamespacedResource<MetadataT, SpecT, StatusT>,
+  KindT extends string,
+  ApiVersionT extends string
 > {
+  kind: KindT;
+  apiVersion: ApiVersionT;
   get(namespace: string, name: string): Promise<T>;
   watch(namespace: string, name: string): ResourceWatch<T>;
   delete(namespace: string, name: string): Promise<T>;
@@ -253,8 +290,15 @@ export interface StaticNamespacedResource<
 
 function implementStaticMethods(
   klass: typeof Resource &
-    StaticResource<unknown, unknown, unknown, IResource<unknown, unknown, unknown>> &
-    StaticNamespacedResource<unknown, unknown, unknown, INamespacedResource<unknown, unknown, unknown>> & {
+    StaticResource<unknown, unknown, unknown, IResource<unknown, unknown, unknown>, string, string> &
+    StaticNamespacedResource<
+      unknown,
+      unknown,
+      unknown,
+      INamespacedResource<unknown, unknown, unknown>,
+      string,
+      string
+    > & {
       isNamespaced: boolean;
       kind: string | null;
       apiVersion: string | null;
@@ -262,8 +306,9 @@ function implementStaticMethods(
       hasInlineSpec: boolean;
     },
 ) {
-  const kind = klass.kind ?? throwError(new Error(`Please specify 'kind' for ${klass.name}`));
-  const apiVersion = klass.apiVersion ?? throwError(new Error(`Please specify 'apiVersion' for ${klass.name}`));
+  const kind = (klass.kind as string | null) ?? throwError(new Error(`Please specify 'kind' for ${klass.name}`));
+  const apiVersion =
+    (klass.apiVersion as string | null) ?? throwError(new Error(`Please specify 'apiVersion' for ${klass.name}`));
   const apiPlural = klass.apiPlural ?? throwError(new Error(`Please specify 'apiPlural' for ${klass.name}`));
   const { hasInlineSpec } = klass;
 
@@ -545,10 +590,14 @@ function implementStaticMethods(
     return parseRawObject(conn, raw);
   };
 
-  (klass as StaticResource<unknown, unknown, unknown, IResource<unknown, unknown, unknown>>).apply = async (
-    metadata: CreatableMetadata & { namespace?: string },
-    spec: unknown,
-  ) => {
+  (klass as StaticResource<
+    unknown,
+    unknown,
+    unknown,
+    IResource<unknown, unknown, unknown>,
+    string,
+    string
+  >).apply = async (metadata: CreatableMetadata & { namespace?: string }, spec: unknown) => {
     const conn = ClusterConnection.current();
     const base = apiVersion.includes("/") ? `apis` : "api";
     let url;
@@ -584,12 +633,21 @@ export function wrapResource<
   SpecT,
   StatusT,
   InstanceT extends IResource<MetadataT, SpecT, StatusT>,
+  KindT extends string,
+  ApiVersionT extends string,
   T extends new (...args: never[]) => InstanceT = IStaticResource<InstanceT, MetadataT, SpecT, StatusT>
->(klass: T): StaticResource<MetadataT, SpecT, StatusT, InstanceT> & Omit<T, "apply"> {
+>(klass: T): StaticResource<MetadataT, SpecT, StatusT, InstanceT, KindT, ApiVersionT> & Omit<T, "apply"> {
   implementStaticMethods(
     (klass as unknown) as typeof Resource &
-      StaticResource<unknown, unknown, unknown, Resource<unknown, unknown, unknown>> &
-      StaticNamespacedResource<unknown, unknown, unknown, NamespacedResource<unknown, unknown, unknown>> & {
+      StaticResource<unknown, unknown, unknown, Resource<unknown, unknown, unknown, string, string>, string, string> &
+      StaticNamespacedResource<
+        unknown,
+        unknown,
+        unknown,
+        NamespacedResource<unknown, unknown, unknown, string, string>,
+        string,
+        string
+      > & {
         isNamespaced: boolean;
         kind: string | null;
         apiVersion: string | null;
@@ -597,7 +655,8 @@ export function wrapResource<
         hasInlineSpec: boolean;
       },
   );
-  return (klass as unknown) as StaticResource<MetadataT, SpecT, StatusT, InstanceT> & Omit<T, "apply">;
+  return (klass as unknown) as StaticResource<MetadataT, SpecT, StatusT, InstanceT, KindT, ApiVersionT> &
+    Omit<T, "apply">;
 }
 
 export function wrapNamespacedResource<
@@ -605,12 +664,21 @@ export function wrapNamespacedResource<
   SpecT,
   StatusT,
   InstanceT extends INamespacedResource<MetadataT, SpecT, StatusT>,
+  KindT extends string,
+  ApiVersionT extends string,
   T extends new (...args: never[]) => InstanceT = IStaticNamespacedResource<InstanceT, MetadataT, SpecT, StatusT>
->(klass: T): StaticNamespacedResource<MetadataT, SpecT, StatusT, InstanceT> & Omit<T, "apply"> {
+>(klass: T): StaticNamespacedResource<MetadataT, SpecT, StatusT, InstanceT, KindT, ApiVersionT> & Omit<T, "apply"> {
   implementStaticMethods(
     (klass as unknown) as typeof Resource &
-      StaticResource<unknown, unknown, unknown, Resource<unknown, unknown, unknown>> &
-      StaticNamespacedResource<unknown, unknown, unknown, NamespacedResource<unknown, unknown, unknown>> & {
+      StaticResource<unknown, unknown, unknown, Resource<unknown, unknown, unknown, string, string>, string, string> &
+      StaticNamespacedResource<
+        unknown,
+        unknown,
+        unknown,
+        NamespacedResource<unknown, unknown, unknown, string, string>,
+        string,
+        string
+      > & {
         isNamespaced: boolean;
         kind: string | null;
         apiVersion: string | null;
@@ -618,5 +686,6 @@ export function wrapNamespacedResource<
         hasInlineSpec: boolean;
       },
   );
-  return (klass as unknown) as StaticNamespacedResource<MetadataT, SpecT, StatusT, InstanceT> & Omit<T, "apply">;
+  return (klass as unknown) as StaticNamespacedResource<MetadataT, SpecT, StatusT, InstanceT, KindT, ApiVersionT> &
+    Omit<T, "apply">;
 }

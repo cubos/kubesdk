@@ -31,3 +31,13 @@ export function throwError(error: Error): never {
 export async function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
+
+export type DeepReadonly<T> = T extends string | number | boolean | undefined | null ? T : DeepReadonlyObject<T>;
+type DeepReadonlyObject<T> = {
+  readonly [P in keyof T]: DeepReadonly<T[P]>;
+};
+
+export type DeepUnReadonly<T> = T extends string | number | boolean | undefined | null ? T : DeepUnReadonlyObject<T>;
+type DeepUnReadonlyObject<T> = {
+  -readonly [P in keyof T]: DeepUnReadonly<T[P]>;
+};
