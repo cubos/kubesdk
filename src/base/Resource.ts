@@ -628,7 +628,7 @@ export function wrapResource<
   KindT extends string,
   ApiVersionT extends string,
   T extends new (...args: never[]) => InstanceT = IStaticResource<InstanceT, MetadataT, SpecT, StatusT>
->(klass: T): StaticResource<MetadataT, SpecT, StatusT, InstanceT, KindT, ApiVersionT> & Omit<T, "apply"> {
+>(klass: T): StaticResource<MetadataT, SpecT, StatusT, InstanceT, KindT, ApiVersionT> & T {
   implementStaticMethods(
     (klass as unknown) as typeof Resource &
       StaticResource<unknown, unknown, unknown, Resource<unknown, unknown, unknown, string, string>, string, string> &
@@ -647,8 +647,7 @@ export function wrapResource<
         hasInlineSpec: boolean;
       },
   );
-  return (klass as unknown) as StaticResource<MetadataT, SpecT, StatusT, InstanceT, KindT, ApiVersionT> &
-    Omit<T, "apply">;
+  return (klass as unknown) as StaticResource<MetadataT, SpecT, StatusT, InstanceT, KindT, ApiVersionT> & T;
 }
 
 export function wrapNamespacedResource<
@@ -659,7 +658,7 @@ export function wrapNamespacedResource<
   KindT extends string,
   ApiVersionT extends string,
   T extends new (...args: never[]) => InstanceT = IStaticNamespacedResource<InstanceT, MetadataT, SpecT, StatusT>
->(klass: T): StaticNamespacedResource<MetadataT, SpecT, StatusT, InstanceT, KindT, ApiVersionT> & Omit<T, "apply"> {
+>(klass: T): StaticNamespacedResource<MetadataT, SpecT, StatusT, InstanceT, KindT, ApiVersionT> & T {
   implementStaticMethods(
     (klass as unknown) as typeof Resource &
       StaticResource<unknown, unknown, unknown, Resource<unknown, unknown, unknown, string, string>, string, string> &
@@ -678,6 +677,5 @@ export function wrapNamespacedResource<
         hasInlineSpec: boolean;
       },
   );
-  return (klass as unknown) as StaticNamespacedResource<MetadataT, SpecT, StatusT, InstanceT, KindT, ApiVersionT> &
-    Omit<T, "apply">;
+  return (klass as unknown) as StaticNamespacedResource<MetadataT, SpecT, StatusT, InstanceT, KindT, ApiVersionT> & T;
 }
