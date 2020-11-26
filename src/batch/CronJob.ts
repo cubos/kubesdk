@@ -28,8 +28,15 @@ export interface CronJobStatus {
 interface CronJob extends INamespacedResource<CronJobMetadata, CronJobSpec, CronJobStatus> {}
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export const CronJob = wrapNamespacedResource<CronJobMetadata, CronJobSpec, CronJobStatus, CronJob>(
-  class extends NamespacedResource<CronJobMetadata, CronJobSpec, CronJobStatus> {
+export const CronJob = wrapNamespacedResource<
+  CronJobMetadata,
+  CronJobSpec,
+  CronJobStatus,
+  CronJob,
+  "CronJob",
+  "batch/v1"
+>(
+  class extends NamespacedResource<CronJobMetadata, CronJobSpec, CronJobStatus, "CronJob", "batch/v1"> {
     static kind = "CronJob";
 
     protected static apiPlural = "cronjobs";

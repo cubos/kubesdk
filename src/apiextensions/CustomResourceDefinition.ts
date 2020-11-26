@@ -96,13 +96,17 @@ export const CustomResourceDefinition = wrapResource<
   CustomResourceDefinitionSpec,
   CustomResourceDefinitionStatus,
   CustomResourceDefinition,
+  "CustomResourceDefinition",
+  "apiextensions.k8s.io/v1",
   IStaticCustomResourceDefinition
 >(
   // eslint-disable-next-line no-shadow
   class CustomResourceDefinition extends Resource<
     CustomResourceDefinitionMetadata,
     CustomResourceDefinitionSpec,
-    CustomResourceDefinitionStatus
+    CustomResourceDefinitionStatus,
+    "CustomResourceDefinition",
+    "apiextensions.k8s.io/v1"
   > {
     static kind = "CustomResourceDefinition";
 

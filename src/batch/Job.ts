@@ -31,8 +31,8 @@ export interface JobStatus {
 interface Job extends INamespacedResource<JobMetadata, JobSpec, JobStatus> {}
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export const Job = wrapNamespacedResource<JobMetadata, JobSpec, JobStatus, Job>(
-  class extends NamespacedResource<JobMetadata, JobSpec, JobStatus> {
+export const Job = wrapNamespacedResource<JobMetadata, JobSpec, JobStatus, Job, "Job", "batch/v1">(
+  class extends NamespacedResource<JobMetadata, JobSpec, JobStatus, "Job", "batch/v1"> {
     static kind = "Job";
 
     protected static apiPlural = "jobs";

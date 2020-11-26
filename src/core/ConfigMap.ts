@@ -11,9 +11,16 @@ export interface ConfigMapStatus {}
 interface ConfigMap extends INamespacedResource<ConfigMapMetadata, ConfigMapSpec, ConfigMapStatus> {}
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export const ConfigMap = wrapNamespacedResource<ConfigMapMetadata, ConfigMapSpec, ConfigMapStatus, ConfigMap>(
+export const ConfigMap = wrapNamespacedResource<
+  ConfigMapMetadata,
+  ConfigMapSpec,
+  ConfigMapStatus,
+  ConfigMap,
+  "ConfigMap",
+  "v1"
+>(
   // eslint-disable-next-line no-shadow
-  class ConfigMap extends NamespacedResource<ConfigMapMetadata, ConfigMapSpec, ConfigMapStatus> {
+  class ConfigMap extends NamespacedResource<ConfigMapMetadata, ConfigMapSpec, ConfigMapStatus, "ConfigMap", "v1"> {
     static kind = "ConfigMap";
 
     protected static apiPlural = "configmaps";
