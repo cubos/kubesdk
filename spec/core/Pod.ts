@@ -1,12 +1,26 @@
+import { randomBytes } from "crypto";
 import "jest-extended";
+import { Namespace } from "../../src";
 import { Pod } from "../../src/core/Pod";
 
 describe("Pod", () => {
+  const namespace = randomBytes(8).toString("hex");
+
+  beforeAll(async () => {
+    await Namespace.create({
+      name: namespace,
+    });
+  });
+
+  afterAll(async () => {
+    await Namespace.delete(namespace);
+  });
+
   test.concurrent("exec", async () => {
     const pod = await Pod.apply(
       {
         name: "exec-target",
-        namespace: "default",
+        namespace,
       },
       {
         containers: [

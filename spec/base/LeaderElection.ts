@@ -1,12 +1,25 @@
 import { randomBytes } from "crypto";
 import "jest-extended";
+import { Namespace } from "../../src";
 import { LeaderElection } from "../../src/base/LeaderElection";
 
 describe("LeaderElection", () => {
+  const namespace = randomBytes(8).toString("hex");
+
+  beforeAll(async () => {
+    await Namespace.create({
+      name: namespace,
+    });
+  });
+
+  afterAll(async () => {
+    await Namespace.delete(namespace);
+  });
+
   test.concurrent("becomes a leader quickly", async () => {
     const electionId = randomBytes(8).toString("hex");
 
-    const election = new LeaderElection(electionId);
+    const election = new LeaderElection(electionId, { namespace });
 
     expect(await election.ensureLeader(200)).toBeTrue();
   });
@@ -14,8 +27,8 @@ describe("LeaderElection", () => {
   test.concurrent("holds leadership", async () => {
     const electionId = randomBytes(8).toString("hex");
 
-    const election1 = new LeaderElection(electionId, 1000);
-    const election2 = new LeaderElection(electionId, 1000);
+    const election1 = new LeaderElection(electionId, { namespace, ttl: 1000 });
+    const election2 = new LeaderElection(electionId, { namespace, ttl: 1000 });
 
     for (let i = 0; i < 2; ++i) {
       await election1.ensureLeader();

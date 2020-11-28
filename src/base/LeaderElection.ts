@@ -10,8 +10,14 @@ export class LeaderElection {
 
   private electionName: string;
 
-  constructor(electionId: string, private ttl = 10_000) {
+  private ttl: number;
+
+  private namespace: string;
+
+  constructor(electionId: string, { ttl, namespace }: { ttl?: number; namespace?: string } = {}) {
     this.electionName = `election-${electionId}`;
+    this.ttl = ttl ?? 10_000;
+    this.namespace = namespace ?? ClusterConnection.current().namespace;
   }
 
   async ensureLeader(): Promise<undefined>;
@@ -26,11 +32,11 @@ export class LeaderElection {
         let ref;
 
         try {
-          ref = await Endpoints.get(ClusterConnection.current().namespace, this.electionName);
+          ref = await Endpoints.get(this.namespace, this.electionName);
         } catch (err) {
           if (err instanceof KubernetesError.NotFound) {
             ref = await Endpoints.create({
-              namespace: ClusterConnection.current().namespace,
+              namespace: this.namespace,
               name: this.electionName,
               annotations: {
                 leaderId: this.myId,
