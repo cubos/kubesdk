@@ -1,3 +1,4 @@
+export { CustomResourceDefinition } from "./apiextensions/CustomResourceDefinition";
 export { ClusterConnection } from "./base/ClusterConnection";
 export { Controller } from "./base/Controller";
 export { CustomResourceController } from "./base/CustomResourceController";
