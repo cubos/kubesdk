@@ -1,4 +1,8 @@
 export { CustomResourceDefinition } from "./apiextensions/CustomResourceDefinition";
+export { DaemonSet } from "./apps/DaemonSet";
+export { Deployment } from "./apps/Deployment";
+export { ReplicaSet } from "./apps/ReplicaSet";
+export { StatefulSet } from "./apps/StatefulSet";
 export { ClusterConnection } from "./base/ClusterConnection";
 export { Controller } from "./base/Controller";
 export { CustomResourceController } from "./base/CustomResourceController";
