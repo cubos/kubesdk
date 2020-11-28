@@ -1,7 +1,7 @@
 import { randomBytes } from "crypto";
 import "jest-extended";
 import { LeaderElection } from "../../src/base/LeaderElection";
-import { CancelToken, sleep } from "../../src/utils";
+import { sleep } from "../../src/utils";
 
 describe("LeaderElection", () => {
   test.concurrent("becomes a leader quickly", async () => {
@@ -20,20 +20,12 @@ describe("LeaderElection", () => {
 
     for (let i = 0; i < 2; ++i) {
       await election1.ensureLeader();
-      const cancelToken = new CancelToken();
-
-      await expect(Promise.race([election2.ensureLeader(cancelToken), sleep(800).then(() => "ok")])).resolves.toBe(
-        "ok",
-      );
-      cancelToken.cancel();
+      expect(await election2.ensureLeader(500)).toBeFalse();
     }
 
     await sleep(1000);
     await expect(Promise.race([election2.ensureLeader(), sleep(2000).then(() => "fail")])).resolves.not.toBe("fail");
 
-    const cancelToken = new CancelToken();
-
-    await expect(Promise.race([election1.ensureLeader(cancelToken), sleep(800).then(() => "ok")])).resolves.toBe("ok");
-    cancelToken.cancel();
+    expect(await election1.ensureLeader(500)).toBeFalse();
   });
 });

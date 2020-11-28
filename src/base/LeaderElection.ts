@@ -1,7 +1,7 @@
 import { randomBytes } from "crypto";
 import { hostname } from "os";
 import { Endpoints } from "../core/Endpoints";
-import { CancelToken, sleep } from "../utils";
+import { sleep } from "../utils";
 import { ClusterConnection } from "./ClusterConnection";
 import { KubernetesError } from "./KubernetesError";
 
@@ -14,8 +14,14 @@ export class LeaderElection {
     this.electionName = `election-${electionId}`;
   }
 
-  async ensureLeader(cancelToken?: CancelToken) {
-    while (!cancelToken?.isCanceled) {
+  async ensureLeader(): Promise<undefined>;
+
+  async ensureLeader(timeout: number): Promise<boolean>;
+
+  async ensureLeader(timeout?: number): Promise<boolean | undefined> {
+    const start = new Date();
+
+    for (;;) {
       try {
         let ref;
 
@@ -48,20 +54,36 @@ export class LeaderElection {
           };
 
           await ref.save();
-          return;
+          return true;
         }
 
         if (isMe) {
-          return;
+          return true;
         }
 
-        await sleep(this.ttl / 6);
+        if (timeout === undefined) {
+          return undefined;
+        }
+
+        const maxSleep = timeout - (new Date().getTime() - start.getTime());
+
+        await sleep(Math.min(maxSleep, this.ttl / 6));
       } catch (err) {
         if (!(err instanceof KubernetesError.Conflict)) {
           throw err;
         }
 
-        await sleep(this.ttl / 12);
+        if (timeout === undefined) {
+          return undefined;
+        }
+
+        const maxSleep = timeout - (new Date().getTime() - start.getTime());
+
+        await sleep(Math.min(maxSleep, this.ttl / 12));
+      }
+
+      if (timeout < new Date().getTime() - start.getTime()) {
+        return false;
       }
     }
   }
