@@ -3,7 +3,7 @@ import { INamespacedResource, NamespacedResource, wrapNamespacedResource } from 
 export interface ConfigMapMetadata {}
 
 export interface ConfigMapSpec {
-  data: Record<string, string>;
+  data: Record<string, string | undefined>;
 }
 
 export interface ConfigMapStatus {}

@@ -286,9 +286,10 @@ export interface StaticResource<
 > {
   kind: KindT;
   apiVersion: ApiVersionT;
+  isNamespaced: false;
   get(name: string): Promise<T>;
   watch(name: string): ResourceWatch<T>;
-  delete(name: string): Promise<T>;
+  delete(name: string): Promise<void>;
   list(options?: { selector?: Selector<KindT, false>; limit?: number }): Promise<T[]>;
   watchList(options?: { selector?: Selector<KindT, false> }): ResourceListWatch<T>;
   create: {} extends SpecT
@@ -316,9 +317,10 @@ export interface StaticNamespacedResource<
 > {
   kind: KindT;
   apiVersion: ApiVersionT;
+  isNamespaced: true;
   get(namespace: string, name: string): Promise<T>;
   watch(namespace: string, name: string): ResourceWatch<T>;
-  delete(namespace: string, name: string): Promise<T>;
+  delete(namespace: string, name: string): Promise<void>;
   list(options?: { namespace?: string; selector?: Selector<KindT, true>; limit?: number }): Promise<T[]>;
   watchList(options?: { namespace?: string; selector?: Selector<KindT, true> }): ResourceListWatch<T>;
   create: {} extends SpecT
@@ -338,26 +340,31 @@ export interface StaticNamespacedResource<
 }
 
 function implementStaticMethods(
-  klass: typeof Resource &
-    StaticResource<unknown, unknown, unknown, IResource<unknown, unknown, unknown>, string, string> &
-    StaticNamespacedResource<
-      unknown,
-      unknown,
-      unknown,
-      INamespacedResource<unknown, unknown, unknown>,
-      string,
-      string
-    > & {
-      isNamespaced: boolean;
-      kind: string | null;
-      apiVersion: string | null;
-      apiPlural: string | null;
-      hasInlineSpec: boolean;
-    },
+  klass: (typeof Resource &
+    Omit<
+      StaticResource<unknown, unknown, unknown, IResource<unknown, unknown, unknown>, string, string>,
+      "isNamespaced" | "kind" | "apiVersion"
+    > &
+    Omit<
+      StaticNamespacedResource<
+        unknown,
+        unknown,
+        unknown,
+        INamespacedResource<unknown, unknown, unknown>,
+        string,
+        string
+      >,
+      "isNamespaced" | "kind" | "apiVersion"
+    >) & {
+    isNamespaced: boolean;
+    kind: string | null;
+    apiVersion: string | null;
+    apiPlural: string | null;
+    hasInlineSpec: boolean;
+  },
 ) {
-  const kind = (klass.kind as string | null) ?? throwError(new Error(`Please specify 'kind' for ${klass.name}`));
-  const apiVersion =
-    (klass.apiVersion as string | null) ?? throwError(new Error(`Please specify 'apiVersion' for ${klass.name}`));
+  const kind = klass.kind ?? throwError(new Error(`Please specify 'kind' for ${klass.name}`));
+  const apiVersion = klass.apiVersion ?? throwError(new Error(`Please specify 'apiVersion' for ${klass.name}`));
   const apiPlural = klass.apiPlural ?? throwError(new Error(`Please specify 'apiPlural' for ${klass.name}`));
   const { hasInlineSpec } = klass;
 
@@ -366,13 +373,14 @@ function implementStaticMethods(
       throw new Error(`Expected to receive an object with "kind", "apiVersion" and "metadata"`);
     }
 
-    if (conn.options.paranoid) {
-      if (obj.kind !== kind || obj.apiVersion !== apiVersion) {
-        throw new Error(
-          `Expected to receive ${apiVersion} ${kind}, but got ${obj.apiVersion as string} ${obj.kind as string}`,
-        );
-      }
+    if (obj.kind !== kind || obj.apiVersion !== apiVersion) {
+      console.log(obj);
+      throw new Error(
+        `Expected to receive ${apiVersion} ${kind}, but got ${obj.apiVersion as string} ${obj.kind as string}`,
+      );
+    }
 
+    if (conn.options.paranoid) {
       const schema = await conn.getSchemaForObject(kind, apiVersion);
 
       if (!schema) {
@@ -560,9 +568,7 @@ function implementStaticMethods(
       url = `/${base}/${apiVersion}/${apiPlural}/${encodeURIComponent(namespaceOrName)}`;
     }
 
-    const raw = await conn.delete(url);
-
-    return parseRawObject(conn, raw);
+    await conn.delete(url);
   };
 
   klass.list = async (

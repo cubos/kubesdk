@@ -3,7 +3,7 @@ import { INamespacedResource, NamespacedResource, wrapNamespacedResource } from 
 export interface SecretMetadata {}
 
 export interface SecretSpec {
-  data: Record<string, string>;
+  data: Record<string, string | undefined>;
   stringData?: Record<string, string>;
   type?: string;
 }

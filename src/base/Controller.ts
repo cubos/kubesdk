@@ -1,6 +1,7 @@
 import commandLineArgs from "command-line-args";
 import commandLineUsage from "command-line-usage";
 import { CronJob } from "../batch/CronJob";
+import { ConfigMap } from "../core/ConfigMap";
 import { Secret } from "../core/Secret";
 import { ServiceAccount } from "../core/ServiceAccount";
 import { ClusterRole } from "../rbac/ClusterRole";
@@ -10,12 +11,29 @@ import { RoleBinding } from "../rbac/RoleBinding";
 import { PolicyRule } from "../rbac/types";
 import { ClusterConnection } from "./ClusterConnection";
 import { CustomResourceController, CustomResourceControllerConfig } from "./CustomResourceController";
+import { KubernetesError } from "./KubernetesError";
 
 interface ControllerCronJob {
   name: string;
   schedule: string;
   func(): Promise<void>;
 }
+
+interface InstalledResource {
+  kind: keyof typeof installableKinds;
+  name: string;
+}
+
+const installableKinds = {
+  ClusterRole,
+  ClusterRoleBinding,
+  ConfigMap,
+  CronJob,
+  Role,
+  RoleBinding,
+  Secret,
+  ServiceAccount,
+};
 
 export class Controller {
   private cronJobs: ControllerCronJob[] = [];
@@ -73,7 +91,7 @@ export class Controller {
             header: "Usage",
           },
           {
-            content: `Allowed commands are 'install' or 'run'.\nSee \`<command> -h\` for details.`,
+            content: `Allowed commands are 'install', 'uninstall' or 'run'.\nSee \`<command> -h\` for details.`,
             header: "Commands",
           },
           {
@@ -97,6 +115,9 @@ export class Controller {
       switch (args.shift()) {
         case "install":
           await this.cliInstall(args);
+          break;
+        case "uninstall":
+          await this.cliUninstall(args);
           break;
         case "run":
           await this.cliRun(args);
@@ -167,6 +188,52 @@ export class Controller {
     });
   }
 
+  private async cliUninstall(argv: string[]) {
+    const optionDefinitions = [
+      { description: "Specifies the target namespace", name: "namespace" },
+      { alias: "h", description: "Display this usage guide.", name: "help", type: Boolean },
+    ];
+
+    const options: {
+      namespace?: string;
+      help?: boolean;
+      _unknown?: string[];
+    } = commandLineArgs(optionDefinitions, { argv });
+
+    function showHelp() {
+      console.log(
+        commandLineUsage([
+          {
+            content: `install <options>`,
+            header: "Usage",
+          },
+          {
+            header: "Options",
+            optionList: optionDefinitions,
+          },
+        ]),
+      );
+    }
+
+    if (options.help) {
+      showHelp();
+      return;
+    }
+
+    await new ClusterConnection().use(async () => {
+      if (!options.namespace) {
+        throw new Error("Missing 'namespace' option.");
+      }
+
+      await this.uninstall({
+        namespace: options.namespace,
+        callback(kind, name) {
+          console.log(`delete ${kind} ${name}`);
+        },
+      });
+    });
+  }
+
   private async cliRun(argv: string[]) {
     const optionDefinitions = [{ alias: "h", description: "Display this usage guide.", name: "help", type: Boolean }];
 
@@ -215,12 +282,12 @@ export class Controller {
     });
   }
 
-  async installList() {
-    const list: Array<{ kind: string; name: string }> = [];
+  async installList(namespace: string) {
+    const list: Array<{ kind: keyof typeof installableKinds; name: string }> = [];
 
     await this.install({
       image: "",
-      namespace: "",
+      namespace,
       apply: false,
       callback(kind, name) {
         list.push({ kind, name });
@@ -240,9 +307,44 @@ export class Controller {
     namespace: string;
     image: string;
     imagePullSecret?: string;
-    callback?(kind: string, name: string): void;
+    callback?(kind: keyof typeof installableKinds, name: string): void;
     apply?: boolean;
   }) {
+    let previousList: InstalledResource[] | undefined;
+
+    if (apply !== false) {
+      const targetList = await this.installList(namespace);
+
+      try {
+        await ConfigMap.create(
+          {
+            name: this.name,
+            namespace,
+          },
+          {
+            data: {
+              installedResources: JSON.stringify(targetList),
+            },
+          },
+        );
+      } catch (err) {
+        if (err instanceof KubernetesError.Conflict) {
+          const controllerConfig = await ConfigMap.get(namespace, this.name);
+
+          previousList = JSON.parse(controllerConfig.spec.data.installedResources ?? "[]") as InstalledResource[];
+
+          const newList = [...new Set([...targetList, ...previousList].map(x => JSON.stringify(x)))].map(
+            x => JSON.parse(x) as InstalledResource,
+          );
+
+          controllerConfig.spec.data.installedResources = JSON.stringify(newList);
+          await controllerConfig.save();
+        } else {
+          throw err;
+        }
+      }
+    }
+
     if (this.policyRules.length > 0 || this.clusterPolicyRules.length > 0) {
       callback?.("ServiceAccount", this.name);
       if (apply !== false) {
@@ -293,11 +395,11 @@ export class Controller {
     }
 
     if (this.clusterPolicyRules.length > 0) {
-      callback?.("ClusterRole", this.name);
+      callback?.("ClusterRole", `${this.name}-${namespace}`);
       if (apply !== false) {
         await ClusterRole.apply(
           {
-            name: this.name,
+            name: `${this.name}-${namespace}`,
           },
           {
             rules: this.clusterPolicyRules,
@@ -305,17 +407,17 @@ export class Controller {
         );
       }
 
-      callback?.("ClusterRoleBinding", this.name);
+      callback?.("ClusterRoleBinding", `${this.name}-${namespace}`);
       if (apply !== false) {
         await ClusterRoleBinding.apply(
           {
-            name: this.name,
+            name: `${this.name}-${namespace}`,
           },
           {
             roleRef: {
               apiGroup: "rbac.authorization.k8s.io",
               kind: "ClusterRole",
-              name: this.name,
+              name: `${this.name}-${namespace}`,
             },
             subjects: [
               {
@@ -386,6 +488,75 @@ export class Controller {
         );
       }
     }
+
+    if (apply !== false) {
+      const targetList = await this.installList(namespace);
+
+      if (previousList) {
+        for (const { kind, name } of previousList) {
+          const resourceClass = installableKinds[kind];
+
+          try {
+            callback?.(kind, name);
+            if (resourceClass.isNamespaced) {
+              await resourceClass.delete(namespace, name);
+            } else {
+              await resourceClass.delete(name);
+            }
+          } catch (err) {
+            if (!(err instanceof KubernetesError.NotFound)) {
+              throw err;
+            }
+          }
+        }
+      }
+
+      await ConfigMap.apply(
+        {
+          name: this.name,
+          namespace,
+        },
+        {
+          data: {
+            installedResources: JSON.stringify(targetList),
+          },
+        },
+      );
+    }
+  }
+
+  async uninstall({
+    namespace,
+    callback,
+  }: {
+    namespace: string;
+    callback?(kind: keyof typeof installableKinds, name: string): void;
+  }) {
+    const controllerConfig = await ConfigMap.get(namespace, this.name);
+    const list = JSON.parse(controllerConfig.spec.data.installedResources ?? "[]") as Array<{
+      kind: keyof typeof installableKinds;
+      name: string;
+    }>;
+
+    for (const { kind, name } of list) {
+      const resourceClass = installableKinds[kind];
+
+      try {
+        callback?.(kind, name);
+        if (resourceClass.isNamespaced) {
+          await resourceClass.delete(namespace, name);
+        } else {
+          await resourceClass.delete(name);
+        }
+      } catch (err) {
+        if (!(err instanceof KubernetesError.NotFound)) {
+          throw err;
+        }
+      }
+    }
+
+    callback?.("ConfigMap", this.name);
+    await ConfigMap.delete(namespace, this.name);
   }
 
   async run(action: "cronjob", name: string) {
