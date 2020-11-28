@@ -208,6 +208,21 @@ export class Controller {
     });
   }
 
+  async installList() {
+    const list: Array<{ kind: string; name: string }> = [];
+
+    await this.install({
+      image: "",
+      namespace: "",
+      apply: false,
+      callback(kind, name) {
+        list.push({ kind, name });
+      },
+    });
+
+    return list;
+  }
+
   async install({
     namespace,
     image,
@@ -221,12 +236,14 @@ export class Controller {
     callback?(kind: string, name: string): void;
     apply?: boolean;
   }) {
-    callback?.("ServiceAccount", this.name);
-    if (apply !== false) {
-      await ServiceAccount.apply({
-        name: this.name,
-        namespace,
-      });
+    if (this.policyRules.length > 0 || this.clusterPolicyRules.length > 0) {
+      callback?.("ServiceAccount", this.name);
+      if (apply !== false) {
+        await ServiceAccount.apply({
+          name: this.name,
+          namespace,
+        });
+      }
     }
 
     if (this.policyRules.length > 0) {
@@ -322,7 +339,7 @@ export class Controller {
     }
 
     for (const cronJob of this.cronJobs) {
-      callback?.("Secret", `${this.name}-${cronJob.name}`);
+      callback?.("CronJob", `${this.name}-${cronJob.name}`);
       if (apply !== false) {
         await CronJob.apply(
           {
@@ -350,7 +367,9 @@ export class Controller {
                         })),
                       },
                     ],
-                    serviceAccountName: this.name,
+                    ...(this.policyRules.length > 0 || this.clusterPolicyRules.length > 0
+                      ? { serviceAccountName: this.name }
+                      : {}),
                     restartPolicy: "Never",
                   },
                 },
