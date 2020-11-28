@@ -11,7 +11,7 @@ export interface ServiceAccountSpec {
 
 export interface ServiceAccountStatus {}
 
-interface ServiceAccount
+export interface ServiceAccount
   extends INamespacedResource<ServiceAccountMetadata, ServiceAccountSpec, ServiceAccountStatus> {}
 
 // eslint-disable-next-line @typescript-eslint/naming-convention

@@ -26,7 +26,7 @@ export interface PersistentVolumeClaimStatus {
   phase: "Pending" | "Bound" | "Lost";
 }
 
-interface PersistentVolumeClaim
+export interface PersistentVolumeClaim
   extends INamespacedResource<PersistentVolumeClaimMetadata, PersistentVolumeClaimSpec, PersistentVolumeClaimStatus> {}
 
 // eslint-disable-next-line @typescript-eslint/naming-convention

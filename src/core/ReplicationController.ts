@@ -13,7 +13,7 @@ export interface ReplicationControllerSpec {
 
 export interface ReplicationControllerStatus {
   availableReplicas?: number;
-  conditions?: Condition<"ReplicaFailure">;
+  conditions?: Array<Condition<"ReplicaFailure">>;
   fullyLabeledReplicas?: number;
   observedGeneration?: number;
   readyReplicas?: number;

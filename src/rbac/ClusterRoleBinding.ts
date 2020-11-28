@@ -14,7 +14,7 @@ export interface ClusterRoleBindingSpec {
 
 export interface ClusterRoleBindingStatus {}
 
-interface ClusterRoleBinding
+export interface ClusterRoleBinding
   extends IResource<ClusterRoleBindingMetadata, ClusterRoleBindingSpec, ClusterRoleBindingStatus> {}
 
 // eslint-disable-next-line @typescript-eslint/naming-convention

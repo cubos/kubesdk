@@ -4,7 +4,7 @@ import { Condition } from "./types";
 export interface ComponentStatusMetadata {}
 
 export interface ComponentStatusSpec {
-  conditions: Condition<"Healthy">;
+  conditions?: Array<Condition<"Healthy">>;
 }
 
 export interface ComponentStatusStatus {}

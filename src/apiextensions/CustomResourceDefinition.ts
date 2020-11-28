@@ -1,5 +1,5 @@
 import { JSONSchema4 } from "json-schema";
-import { IResource, IStaticResource, Resource, wrapResource } from "../base/Resource";
+import { IResource, Resource, wrapResource } from "../base/Resource";
 import { Condition } from "../core/types";
 
 export interface CustomResourceDefinitionMetadata {}
@@ -80,15 +80,8 @@ export interface CustomResourceDefinitionNames<KindT extends string = string> {
   singular?: string;
 }
 
-interface CustomResourceDefinition
+export interface CustomResourceDefinition
   extends IResource<CustomResourceDefinitionMetadata, CustomResourceDefinitionSpec, CustomResourceDefinitionStatus> {}
-interface IStaticCustomResourceDefinition
-  extends IStaticResource<
-    CustomResourceDefinition,
-    CustomResourceDefinitionMetadata,
-    CustomResourceDefinitionSpec,
-    CustomResourceDefinitionStatus
-  > {}
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const CustomResourceDefinition = wrapResource<
@@ -97,8 +90,7 @@ export const CustomResourceDefinition = wrapResource<
   CustomResourceDefinitionStatus,
   CustomResourceDefinition,
   "CustomResourceDefinition",
-  "apiextensions.k8s.io/v1",
-  IStaticCustomResourceDefinition
+  "apiextensions.k8s.io/v1"
 >(
   // eslint-disable-next-line no-shadow
   class CustomResourceDefinition extends Resource<

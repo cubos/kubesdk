@@ -135,7 +135,7 @@ export interface PersistentVolumeStatus {
   phase: "Pending" | "Available" | "Bound" | "Released" | "Failed";
 }
 
-interface PersistentVolume
+export interface PersistentVolume
   extends INamespacedResource<PersistentVolumeMetadata, PersistentVolumeSpec, PersistentVolumeStatus> {}
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
