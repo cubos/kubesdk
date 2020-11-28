@@ -17,7 +17,7 @@ interface EndpointPort {
 }
 
 export interface EndpointsSpec {
-  subsets: Array<{
+  subsets?: Array<{
     addresses?: EndpointAddress[];
     notReadyAddresses?: EndpointAddress[];
     ports: EndpointPort[];

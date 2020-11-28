@@ -2,7 +2,7 @@ import "jest-extended";
 import { Pod } from "../../src/core/Pod";
 
 describe("Pod", () => {
-  test("exec", async () => {
+  test.concurrent("exec", async () => {
     const pod = await Pod.apply(
       {
         name: "exec-target",

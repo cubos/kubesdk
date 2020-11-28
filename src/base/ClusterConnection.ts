@@ -59,12 +59,15 @@ export class ClusterConnection {
 
   public readonly options: Readonly<ClusterConnectionOptions>;
 
+  public readonly namespace: string;
+
   constructor(
     options: (
       | {
           baseUrl: string;
           token: string;
           certificate?: Buffer;
+          namespace?: string;
         }
       | {
           kubeconfigPath?: string;
@@ -87,6 +90,8 @@ export class ClusterConnection {
             }
           : {}),
       });
+
+      this.namespace = options.namespace ?? "default";
     } else {
       let kubeconfigPath = options.kubeconfigPath ?? process.env.KUBECONFIG;
 
@@ -143,10 +148,14 @@ export class ClusterConnection {
               : {}),
           }),
         });
+
+        this.namespace = context.namespace ?? "default";
       } else {
         try {
           const token = readFileSync("/var/run/secrets/kubernetes.io/serviceaccount/token", "utf-8");
           const ca = readFileSync("/var/run/secrets/kubernetes.io/serviceaccount/ca.crt");
+
+          this.namespace = readFileSync("/var/run/secrets/kubernetes.io/serviceaccount/namespace", "utf-8");
 
           this.client = Axios.create({
             baseURL: "https://kubernetes.default",

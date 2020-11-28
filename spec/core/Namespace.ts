@@ -4,17 +4,17 @@ import { Namespace } from "../../src/core/Namespace";
 import { expectThrows } from "../utils";
 
 describe("Namespace", () => {
-  test("get", async () => {
+  test.concurrent("get", async () => {
     const ns = await Namespace.get("kube-system");
 
     expect(ns.metadata.name).toBe("kube-system");
   });
 
-  test("get non existing", async () => {
+  test.concurrent("get non existing", async () => {
     await expectThrows(Namespace.get("foo"), KubernetesError.NotFound, `namespaces "foo" not found`);
   });
 
-  test("create and delete", async () => {
+  test.concurrent("create and delete", async () => {
     const namespace = await Namespace.create({ generateName: "test-" });
 
     expect(namespace.status.phase).toBe("Active");
@@ -23,11 +23,11 @@ describe("Namespace", () => {
     expect(deleted.status.phase).toBe("Terminating");
   });
 
-  test("delete non existing", async () => {
+  test.concurrent("delete non existing", async () => {
     await expectThrows(Namespace.delete("foo"), KubernetesError.NotFound, `namespaces "foo" not found`);
   });
 
-  test("list", async () => {
+  test.concurrent("list", async () => {
     const list = await Namespace.list();
     const names = list.map(ns => ns.metadata.name);
 
@@ -37,13 +37,13 @@ describe("Namespace", () => {
     expect(list.length).toBeGreaterThan(3);
   });
 
-  test("list with limit", async () => {
+  test.concurrent("list with limit", async () => {
     const list = await Namespace.list({ limit: 2 });
 
     expect(list.length).toBe(2);
   });
 
-  test("create, get, list, apply and delete", async () => {
+  test.concurrent("create, get, list, apply and delete", async () => {
     const original = await Namespace.create({ generateName: "test-" });
     const { name } = original.metadata;
 
@@ -74,7 +74,7 @@ describe("Namespace", () => {
     expect(deleted.status.phase).toBe("Terminating");
   });
 
-  test("optimistic concurrency", async () => {
+  test.concurrent("optimistic concurrency", async () => {
     const original = await Namespace.create({ generateName: "test-" });
     const { name } = original.metadata;
     const another = await Namespace.get(name);
