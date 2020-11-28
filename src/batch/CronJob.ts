@@ -1,6 +1,6 @@
 import { INamespacedResource, NamespacedResource, wrapNamespacedResource } from "../base/Resource";
 import { ObjectReference } from "../core/types";
-import { JobSpec } from "./Job";
+import { Job, JobSpec } from "./Job";
 
 export interface CronJobMetadata {}
 
@@ -9,7 +9,7 @@ export interface CronJobSpec {
   failedJobsHistoryLimit?: number;
   jobTemplate: {
     metadata?: {
-      labels?: Record<string, string>;
+      labels: Record<string, string>;
       annotations?: Record<string, string>;
     };
     spec: JobSpec;
@@ -25,7 +25,10 @@ export interface CronJobStatus {
   lastScheduleTime?: string;
 }
 
-interface CronJob extends INamespacedResource<CronJobMetadata, CronJobSpec, CronJobStatus> {}
+export interface CronJob extends INamespacedResource<CronJobMetadata, CronJobSpec, CronJobStatus> {
+  trigger(): Promise<Job>;
+  jobs(): Promise<Job[]>;
+}
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const CronJob = wrapNamespacedResource<
@@ -42,5 +45,34 @@ export const CronJob = wrapNamespacedResource<
     protected static apiPlural = "cronjobs";
 
     static apiVersion = "batch/v1beta1";
+
+    async trigger() {
+      return Job.apply(
+        {
+          name: `${this.metadata.name}-${new Date().getTime()}`,
+          namespace: this.metadata.namespace,
+          ownerReferences: [
+            {
+              apiVersion: "batch/v1beta1",
+              kind: "CronJob",
+              name: this.metadata.name,
+              uid: this.metadata.uid,
+              controller: true,
+              blockOwnerDeletion: true,
+            },
+          ],
+        },
+        this.spec.jobTemplate.spec,
+      );
+    }
+
+    async jobs() {
+      return Job.list({
+        namespace: this.metadata.namespace,
+        selector: {
+          matchLabels: this.spec.jobTemplate.metadata?.labels,
+        },
+      });
+    }
   },
 );

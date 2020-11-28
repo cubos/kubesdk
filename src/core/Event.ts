@@ -28,7 +28,7 @@ export interface EventSpec {
 
 export interface EventStatus {}
 
-interface Event extends INamespacedResource<EventMetadata, EventSpec, EventStatus> {}
+export interface Event extends INamespacedResource<EventMetadata, EventSpec, EventStatus> {}
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const Event = wrapNamespacedResource<EventMetadata, EventSpec, EventStatus, Event, "Event", "v1">(

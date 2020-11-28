@@ -8,7 +8,7 @@ export interface ConfigMapSpec {
 
 export interface ConfigMapStatus {}
 
-interface ConfigMap extends INamespacedResource<ConfigMapMetadata, ConfigMapSpec, ConfigMapStatus> {}
+export interface ConfigMap extends INamespacedResource<ConfigMapMetadata, ConfigMapSpec, ConfigMapStatus> {}
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const ConfigMap = wrapNamespacedResource<

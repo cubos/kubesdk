@@ -1,5 +1,5 @@
 import { INamespacedResource, NamespacedResource, wrapNamespacedResource } from "../base/Resource";
-import { PodTemplateSpec } from "../core/Pod";
+import { Pod, PodTemplateSpec } from "../core/Pod";
 import { Condition, LabelSelector } from "../core/types";
 
 export interface JobMetadata {}
@@ -28,7 +28,9 @@ export interface JobStatus {
   succeeded?: number;
 }
 
-interface Job extends INamespacedResource<JobMetadata, JobSpec, JobStatus> {}
+export interface Job extends INamespacedResource<JobMetadata, JobSpec, JobStatus> {
+  pods(): Promise<Pod[]>;
+}
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const Job = wrapNamespacedResource<JobMetadata, JobSpec, JobStatus, Job, "Job", "batch/v1">(
@@ -38,5 +40,12 @@ export const Job = wrapNamespacedResource<JobMetadata, JobSpec, JobStatus, Job, 
     protected static apiPlural = "jobs";
 
     static apiVersion = "batch/v1";
+
+    async pods() {
+      return Pod.list({
+        namespace: this.metadata.namespace,
+        selector: this.spec.selector,
+      });
+    }
   },
 );

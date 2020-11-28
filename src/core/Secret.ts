@@ -10,7 +10,7 @@ export interface SecretSpec {
 
 export interface SecretStatus {}
 
-interface Secret extends INamespacedResource<SecretMetadata, SecretSpec, SecretStatus> {}
+export interface Secret extends INamespacedResource<SecretMetadata, SecretSpec, SecretStatus> {}
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const Secret = wrapNamespacedResource<SecretMetadata, SecretSpec, SecretStatus, Secret, "Secret", "v1">(

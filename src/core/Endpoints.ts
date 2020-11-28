@@ -26,7 +26,7 @@ export interface EndpointsSpec {
 
 export interface EndpointsStatus {}
 
-interface Endpoints extends INamespacedResource<EndpointsMetadata, EndpointsSpec, EndpointsStatus> {}
+export interface Endpoints extends INamespacedResource<EndpointsMetadata, EndpointsSpec, EndpointsStatus> {}
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const Endpoints = wrapNamespacedResource<

@@ -9,6 +9,14 @@ export interface CreatableMetadata {
   name: string;
   labels?: Record<string, string>;
   annotations?: Record<string, string>;
+  ownerReferences?: Array<{
+    apiVersion: string;
+    blockOwnerDeletion?: boolean;
+    controller?: boolean;
+    kind: string;
+    name: string;
+    uid: string;
+  }>;
 }
 
 export interface ExtraMetadata {

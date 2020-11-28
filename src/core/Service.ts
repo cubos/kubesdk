@@ -57,7 +57,7 @@ export interface ServiceStatus {
   };
 }
 
-interface Service extends INamespacedResource<ServiceMetadata, ServiceSpec, ServiceStatus> {}
+export interface Service extends INamespacedResource<ServiceMetadata, ServiceSpec, ServiceStatus> {}
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const Service = wrapNamespacedResource<ServiceMetadata, ServiceSpec, ServiceStatus, Service, "Service", "v1">(

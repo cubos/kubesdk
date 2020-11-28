@@ -15,7 +15,7 @@ export interface LimitRangeSpec {
 
 export interface LimitRangeStatus {}
 
-interface LimitRange extends INamespacedResource<LimitRangeMetadata, LimitRangeSpec, LimitRangeStatus> {}
+export interface LimitRange extends INamespacedResource<LimitRangeMetadata, LimitRangeSpec, LimitRangeStatus> {}
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const LimitRange = wrapNamespacedResource<

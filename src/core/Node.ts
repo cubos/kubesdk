@@ -85,7 +85,7 @@ export interface NodeStatus {
   volumesInUse?: string[];
 }
 
-interface Node extends IResource<NodeMetadata, NodeSpec, NodeStatus> {}
+export interface Node extends IResource<NodeMetadata, NodeSpec, NodeStatus> {}
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const Node = wrapResource<NodeMetadata, NodeSpec, NodeStatus, Node, "Node", "v1">(

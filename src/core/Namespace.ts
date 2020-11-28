@@ -1,4 +1,4 @@
-import { IResource, IStaticResource, Resource, wrapResource } from "../base/Resource";
+import { IResource, Resource, wrapResource } from "../base/Resource";
 
 export interface NamespaceMetadata {}
 
@@ -10,7 +10,7 @@ export interface NamespaceStatus {
   phase: "Active" | "Terminating";
 }
 
-interface Namespace extends IResource<NamespaceMetadata, NamespaceSpec, NamespaceStatus> {}
+export interface Namespace extends IResource<NamespaceMetadata, NamespaceSpec, NamespaceStatus> {}
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const Namespace = wrapResource<NamespaceMetadata, NamespaceSpec, NamespaceStatus, Namespace, "Namespace", "v1">(

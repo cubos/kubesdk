@@ -534,7 +534,7 @@ export interface PodTemplateSpec {
   spec: PodSpec;
 }
 
-interface Pod extends INamespacedResource<PodMetadata, PodSpec, PodStatus> {
+export interface Pod extends INamespacedResource<PodMetadata, PodSpec, PodStatus> {
   exec(containerName: string, command: string[], options: ExecOptions): Promise<Exec>;
   exec(
     containerName: string,

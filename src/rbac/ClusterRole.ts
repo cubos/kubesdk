@@ -13,7 +13,7 @@ export interface ClusterRoleSpec {
 
 export interface ClusterRoleStatus {}
 
-interface ClusterRole extends IResource<ClusterRoleMetadata, ClusterRoleSpec, ClusterRoleStatus> {}
+export interface ClusterRole extends IResource<ClusterRoleMetadata, ClusterRoleSpec, ClusterRoleStatus> {}
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const ClusterRole = wrapResource<

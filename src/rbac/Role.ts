@@ -9,7 +9,7 @@ export interface RoleSpec {
 
 export interface RoleStatus {}
 
-interface Role extends INamespacedResource<RoleMetadata, RoleSpec, RoleStatus> {}
+export interface Role extends INamespacedResource<RoleMetadata, RoleSpec, RoleStatus> {}
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const Role = wrapNamespacedResource<

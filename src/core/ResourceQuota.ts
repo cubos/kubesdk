@@ -25,7 +25,8 @@ export interface ResourceQuotaStatus {
   used: Record<string, string>;
 }
 
-interface ResourceQuota extends INamespacedResource<ResourceQuotaMetadata, ResourceQuotaSpec, ResourceQuotaStatus> {}
+export interface ResourceQuota
+  extends INamespacedResource<ResourceQuotaMetadata, ResourceQuotaSpec, ResourceQuotaStatus> {}
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const ResourceQuota = wrapNamespacedResource<

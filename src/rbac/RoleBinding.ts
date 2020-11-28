@@ -14,7 +14,7 @@ export interface RoleBindingSpec {
 
 export interface RoleBindingStatus {}
 
-interface RoleBinding extends INamespacedResource<RoleBindingMetadata, RoleBindingSpec, RoleBindingStatus> {}
+export interface RoleBinding extends INamespacedResource<RoleBindingMetadata, RoleBindingSpec, RoleBindingStatus> {}
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const RoleBinding = wrapNamespacedResource<

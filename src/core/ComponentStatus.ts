@@ -9,7 +9,8 @@ export interface ComponentStatusSpec {
 
 export interface ComponentStatusStatus {}
 
-interface ComponentStatus extends IResource<ComponentStatusMetadata, ComponentStatusSpec, ComponentStatusStatus> {}
+export interface ComponentStatus
+  extends IResource<ComponentStatusMetadata, ComponentStatusSpec, ComponentStatusStatus> {}
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const ComponentStatus = wrapResource<
