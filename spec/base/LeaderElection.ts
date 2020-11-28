@@ -32,10 +32,10 @@ describe("LeaderElection", () => {
 
     for (let i = 0; i < 2; ++i) {
       await election1.ensureLeader();
-      expect(await election2.ensureLeader(500)).toBeFalse();
+      expect(await election2.ensureLeader(300)).toBeFalse();
     }
 
     expect(await election2.ensureLeader(2000)).toBeTrue();
-    expect(await election1.ensureLeader(200)).toBeFalse();
+    expect(await election1.ensureLeader(300)).toBeFalse();
   });
 });
