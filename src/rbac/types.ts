@@ -1,16 +1,28 @@
 export type PolicyRule = (
   | {
-      apiGroups: string[];
+      apiGroups: string[] | ["*"];
       resourceNames?: string[];
-      resources: string[];
+      resources: string[] | ["*"];
     }
   | {
-      nonResourceURLs: string[];
+      nonResourceURLs: string[] | ["*"];
     }
 ) & {
-  verbs: Array<
-    "create" | "get" | "list" | "watch" | "update" | "patch" | "delete" | "use" | "bind" | "escalate" | "impersonate"
-  >;
+  verbs:
+    | Array<
+        | "create"
+        | "get"
+        | "list"
+        | "watch"
+        | "update"
+        | "patch"
+        | "delete"
+        | "use"
+        | "bind"
+        | "escalate"
+        | "impersonate"
+      >
+    | ["*"];
 };
 
 export type Subject =
