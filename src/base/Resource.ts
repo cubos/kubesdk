@@ -177,9 +177,56 @@ export class Resource<MetadataT, SpecT, StatusT, KindT extends string, ApiVersio
   }
 }
 
-type Selector = LabelSelector & {
-  matchFields?: Record<string, string>;
-  doesntMatchFields?: Record<string, string>;
+type SelectableFields<KindT, IsNamespaced extends boolean> = KindT extends "Event"
+  ?
+      | "involvedObject.kind"
+      | "involvedObject.namespace"
+      | "involvedObject.name"
+      | "involvedObject.uid"
+      | "involvedObject.apiVersion"
+      | "involvedObject.resourceVersion"
+      | "involvedObject.fieldPath"
+      | "reason"
+      | "reportingComponent"
+      | "source"
+      | "type"
+      | "metadata.namespace"
+      | "metadata.name"
+  : KindT extends "Namespace"
+  ? "status.phase" | "metadata.name"
+  : KindT extends "Secret"
+  ? "metadata.namespace" | "metadata.name"
+  : KindT extends "Node"
+  ? "metadata.name" | "spec.unschedulable"
+  : KindT extends "ReplicationController"
+  ? "metadata.name" | "metadata.namespace" | "status.replicas"
+  : KindT extends "Pod"
+  ?
+      | "metadata.name"
+      | "metadata.namespace"
+      | "spec.nodeName"
+      | "spec.restartPolicy"
+      | "spec.schedulerName"
+      | "spec.serviceAccountName"
+      | "status.phase"
+      | "status.podIP"
+      | "status.podIPs"
+      | "status.nominatedNodeName"
+  : KindT extends "Job"
+  ? "metadata.name" | "metadata.namespace" | "status.successful"
+  : KindT extends "CronJob"
+  ? "metadata.name" | "metadata.namespace" | "status.successful"
+  : KindT extends "CertificateSigningRequest"
+  ? "metadata.name" | "spec.signerName"
+  : KindT extends "StatefulSet"
+  ? "metadata.name" | "metadata.namespace" | "status.successful"
+  : IsNamespaced extends true
+  ? "metadata.name" | "metadata.namespace"
+  : "metadata.name";
+
+type Selector<KindT, IsNamespaced extends boolean> = LabelSelector & {
+  matchFields?: Record<SelectableFields<KindT, IsNamespaced>, string>;
+  doesntMatchFields?: Record<SelectableFields<KindT, IsNamespaced>, string>;
 };
 
 export interface INamespacedResource<MetadataT, SpecT, StatusT>
@@ -242,8 +289,8 @@ export interface StaticResource<
   get(name: string): Promise<T>;
   watch(name: string): ResourceWatch<T>;
   delete(name: string): Promise<T>;
-  list(options?: { selector?: Selector; limit?: number }): Promise<T[]>;
-  watchList(options?: { selector?: Selector }): ResourceListWatch<T>;
+  list(options?: { selector?: Selector<KindT, false>; limit?: number }): Promise<T[]>;
+  watchList(options?: { selector?: Selector<KindT, false> }): ResourceListWatch<T>;
   create: {} extends SpecT
     ? (
         metadata: Omit<CreatableMetadata, "name"> & MetadataT & ({ generateName: string } | { name: string }),
@@ -272,8 +319,8 @@ export interface StaticNamespacedResource<
   get(namespace: string, name: string): Promise<T>;
   watch(namespace: string, name: string): ResourceWatch<T>;
   delete(namespace: string, name: string): Promise<T>;
-  list(options?: { namespace?: string; selector?: Selector; limit?: number }): Promise<T[]>;
-  watchList(options?: { namespace?: string; selector?: Selector }): ResourceListWatch<T>;
+  list(options?: { namespace?: string; selector?: Selector<KindT, true>; limit?: number }): Promise<T[]>;
+  watchList(options?: { namespace?: string; selector?: Selector<KindT, true> }): ResourceListWatch<T>;
   create: {} extends SpecT
     ? (
         metadata: Omit<CreatableMetadata, "name"> &
@@ -366,7 +413,7 @@ function implementStaticMethods(
 
   ((klass as unknown) as Record<string, unknown>).parseRawObject = parseRawObject;
 
-  function selectorToQueryObject(selector?: Selector) {
+  function selectorToQueryObject(selector?: Selector<string, boolean>) {
     const qs: Record<string, string> = {};
 
     const labelSelector: string[] = [];
@@ -473,7 +520,7 @@ function implementStaticMethods(
   klass.watchList = (
     options: {
       namespace?: string;
-      selector?: Selector;
+      selector?: Selector<string, boolean>;
       limit?: number;
     } = {},
   ) => {
@@ -521,7 +568,7 @@ function implementStaticMethods(
   klass.list = async (
     options: {
       namespace?: string;
-      selector?: Selector;
+      selector?: Selector<string, boolean>;
       limit?: number;
     } = {},
   ) => {
