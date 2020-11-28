@@ -18,7 +18,7 @@ export type ServiceSpec = {
           name?: string;
           nodePort?: number;
           port: number;
-          protocol: "TCP" | "UDP" | "SCTP";
+          protocol?: "TCP" | "UDP" | "SCTP";
           targetPort?: number;
         },
       ];
@@ -29,7 +29,7 @@ export type ServiceSpec = {
     }
   | ((
       | {
-          type: "ClusterIP" | "NodePort";
+          type?: "ClusterIP" | "NodePort";
         }
       | {
           type: "LoadBalancer";

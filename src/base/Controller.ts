@@ -1,15 +1,16 @@
-import commandLineArgs from "command-line-args";
-import commandLineUsage from "command-line-usage";
+import { CustomResourceDefinition } from "../apiextensions/CustomResourceDefinition";
+import { Deployment } from "../apps/Deployment";
 import { CronJob } from "../batch/CronJob";
 import { ConfigMap } from "../core/ConfigMap";
 import { Secret } from "../core/Secret";
+import { Service } from "../core/Service";
 import { ServiceAccount } from "../core/ServiceAccount";
 import { ClusterRole } from "../rbac/ClusterRole";
 import { ClusterRoleBinding } from "../rbac/ClusterRoleBinding";
 import { Role } from "../rbac/Role";
 import { RoleBinding } from "../rbac/RoleBinding";
 import { PolicyRule } from "../rbac/types";
-import { ClusterConnection } from "./ClusterConnection";
+import { ControllerCli } from "./ControllerCli";
 import { CustomResourceController, CustomResourceControllerConfig } from "./CustomResourceController";
 import { KubernetesError } from "./KubernetesError";
 
@@ -29,9 +30,12 @@ const installableKinds = {
   ClusterRoleBinding,
   ConfigMap,
   CronJob,
+  CustomResourceDefinition,
+  Deployment,
   Role,
   RoleBinding,
   Secret,
+  Service,
   ServiceAccount,
 };
 
@@ -47,8 +51,6 @@ export class Controller {
   private secretEnvs: Array<{ name: string; values: Record<string, string> }> = [];
 
   public logRequests = false;
-
-  public paranoid = Boolean(process.env.KUBESDK_PARANOID);
 
   constructor(public name: string) {}
 
@@ -74,212 +76,14 @@ export class Controller {
 
     this.crds.push(config);
     this.clusterPolicyRules.push({
-      apiGroups: [config.crdSpec.group],
-      resources: [config.crdSpec.names.plural],
+      apiGroups: [config.spec.group],
+      resources: [config.spec.names.plural],
       verbs: ["*"],
     });
   }
 
   async cli(argv: string[] = process.argv.slice(2)) {
-    const optionDefinitions = [{ alias: "h", description: "Display this usage guide.", name: "help", type: Boolean }];
-
-    function showHelp() {
-      console.log(
-        commandLineUsage([
-          {
-            content: `<command> <options>`,
-            header: "Usage",
-          },
-          {
-            content: `Allowed commands are 'install', 'uninstall' or 'run'.\nSee \`<command> -h\` for details.`,
-            header: "Commands",
-          },
-          {
-            header: "Options",
-            optionList: optionDefinitions,
-          },
-        ]),
-      );
-    }
-
-    try {
-      const options = commandLineArgs(optionDefinitions, { stopAtFirstUnknown: true, argv });
-
-      if (options.help) {
-        showHelp();
-        return;
-      }
-
-      const args = options._unknown ?? [];
-
-      switch (args.shift()) {
-        case "install":
-          await this.cliInstall(args);
-          break;
-        case "uninstall":
-          await this.cliUninstall(args);
-          break;
-        case "run":
-          await this.cliRun(args);
-          break;
-        default:
-          showHelp();
-      }
-    } catch (err) {
-      console.error(err);
-      // eslint-disable-next-line no-process-exit
-      process.exit(1);
-    }
-  }
-
-  private async cliInstall(argv: string[]) {
-    const optionDefinitions = [
-      { description: "Specifies the target namespace", name: "namespace" },
-      { description: "Specifies the Docker image with ENTRYPOINT pointed to this cli", name: "image" },
-      { description: "Specifies the image pull secret", name: "imagePullSecret" },
-      { alias: "h", description: "Display this usage guide.", name: "help", type: Boolean },
-    ];
-
-    const options: {
-      namespace?: string;
-      image?: string;
-      imagePullSecret?: string;
-      help?: boolean;
-      _unknown?: string[];
-    } = commandLineArgs(optionDefinitions, { argv });
-
-    function showHelp() {
-      console.log(
-        commandLineUsage([
-          {
-            content: `install <options>`,
-            header: "Usage",
-          },
-          {
-            header: "Options",
-            optionList: optionDefinitions,
-          },
-        ]),
-      );
-    }
-
-    if (options.help) {
-      showHelp();
-      return;
-    }
-
-    await new ClusterConnection().use(async () => {
-      if (!options.namespace) {
-        throw new Error("Missing 'namespace' option.");
-      }
-
-      if (!options.image) {
-        throw new Error("Missing 'image' option.");
-      }
-
-      await this.install({
-        namespace: options.namespace,
-        image: options.image,
-        imagePullSecret: options.imagePullSecret,
-        callback(kind, name) {
-          console.log(`apply ${kind} ${name}`);
-        },
-      });
-    });
-  }
-
-  private async cliUninstall(argv: string[]) {
-    const optionDefinitions = [
-      { description: "Specifies the target namespace", name: "namespace" },
-      { alias: "h", description: "Display this usage guide.", name: "help", type: Boolean },
-    ];
-
-    const options: {
-      namespace?: string;
-      help?: boolean;
-      _unknown?: string[];
-    } = commandLineArgs(optionDefinitions, { argv });
-
-    function showHelp() {
-      console.log(
-        commandLineUsage([
-          {
-            content: `install <options>`,
-            header: "Usage",
-          },
-          {
-            header: "Options",
-            optionList: optionDefinitions,
-          },
-        ]),
-      );
-    }
-
-    if (options.help) {
-      showHelp();
-      return;
-    }
-
-    await new ClusterConnection().use(async () => {
-      if (!options.namespace) {
-        throw new Error("Missing 'namespace' option.");
-      }
-
-      await this.uninstall({
-        namespace: options.namespace,
-        callback(kind, name) {
-          console.log(`delete ${kind} ${name}`);
-        },
-      });
-    });
-  }
-
-  private async cliRun(argv: string[]) {
-    const optionDefinitions = [{ alias: "h", description: "Display this usage guide.", name: "help", type: Boolean }];
-
-    const options = commandLineArgs(optionDefinitions, { stopAtFirstUnknown: true, argv });
-
-    function showHelp() {
-      console.log(
-        commandLineUsage([
-          {
-            content: "run <type> <name>",
-            header: "Usage",
-          },
-          {
-            content: "Allowed types are 'cronjob'.",
-            header: "Types",
-          },
-          {
-            header: "Options",
-            optionList: optionDefinitions,
-          },
-        ]),
-      );
-    }
-
-    if (options.help) {
-      showHelp();
-      return;
-    }
-
-    const args = options._unknown ?? [];
-
-    await new ClusterConnection({
-      name: this.name,
-      logRequests: this.logRequests,
-      paranoid: this.paranoid,
-    }).use(async () => {
-      switch (args[0]) {
-        case "cronjob": {
-          await this.run(args[0], args[1]);
-          break;
-        }
-
-        default:
-          showHelp();
-      }
-    });
+    await new ControllerCli(this).cli(argv);
   }
 
   async installList(namespace: string) {
@@ -489,6 +293,101 @@ export class Controller {
       }
     }
 
+    let needsControllerService = false;
+
+    for (const crd of this.crds) {
+      if (crd.conversions.size > 0) {
+        needsControllerService = true;
+      }
+
+      callback?.("CustomResourceDefinition", this.name);
+      if (apply !== false) {
+        await CustomResourceDefinition.apply(
+          {
+            name: `${crd.spec.names.plural}.${crd.spec.group}`,
+          },
+          {
+            ...crd.spec,
+            conversion: {
+              strategy: "Webhook",
+              webhook: {
+                clientConfig: {
+                  service: {
+                    name: this.name,
+                    namespace,
+                  },
+                },
+                conversionReviewVersions: ["v1"],
+              },
+            },
+          },
+        );
+      }
+    }
+
+    if (needsControllerService) {
+      callback?.("Deployment", this.name);
+      await Deployment.apply(
+        {
+          name: this.name,
+          namespace,
+        },
+        {
+          selector: {
+            matchLabels: {
+              controller: this.name,
+            },
+          },
+          template: {
+            metadata: {
+              labels: {
+                controller: this.name,
+              },
+            },
+            spec: {
+              ...(imagePullSecret
+                ? {
+                    imagePullSecrets: [{ name: imagePullSecret }],
+                  }
+                : {}),
+              containers: [
+                {
+                  name: this.name,
+                  image,
+                  args: ["run", "controller"],
+                  envFrom: this.secretEnvs.map(secretEnv => ({
+                    secretRef: { name: `${this.name}-${secretEnv.name}` },
+                  })),
+                },
+              ],
+              ...(this.policyRules.length > 0 || this.clusterPolicyRules.length > 0
+                ? { serviceAccountName: this.name }
+                : {}),
+              restartPolicy: "Never",
+            },
+          },
+        },
+      );
+
+      callback?.("Service", this.name);
+      await Service.apply(
+        {
+          name: this.name,
+          namespace,
+        },
+        {
+          ports: [
+            {
+              port: 8443,
+            },
+          ],
+          selector: {
+            controller: this.name,
+          },
+        },
+      );
+    }
+
     if (apply !== false) {
       const targetList = await this.installList(namespace);
 
@@ -559,16 +458,22 @@ export class Controller {
     await ConfigMap.delete(namespace, this.name);
   }
 
-  async run(action: "cronjob", name: string) {
+  async run(action: "cronjob" | "controller", name?: string) {
     switch (action) {
       case "cronjob": {
         const cronJob = this.cronJobs.find(x => x.name === name);
 
         if (!cronJob) {
-          throw new Error(`Unknown cronjob "${name}"`);
+          throw new Error(`Unknown cronjob "${name ?? ""}"`);
         }
 
         await cronJob.func();
+        break;
+      }
+
+      case "controller": {
+        // Hang forever
+        await new Promise(() => undefined);
         break;
       }
 

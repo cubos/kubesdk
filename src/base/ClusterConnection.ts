@@ -9,12 +9,11 @@ import { homedir } from "os";
 import { join } from "path";
 import { Readable, Transform } from "stream";
 import WebSocket from "ws";
-import { has, sleep } from "../utils";
+import { sleep } from "../utils";
 import { KubeConfig } from "./KubeConfig";
 import { KubernetesError } from "./KubernetesError";
 
 interface ClusterConnectionOptions {
-  paranoid: boolean;
   logRequests: boolean;
   name: string;
 }
@@ -175,7 +174,6 @@ export class ClusterConnection {
     axiosRetry(this.client, { retryDelay: axiosRetry.exponentialDelay, retries: 5 });
 
     this.options = {
-      paranoid: options.paranoid ?? Boolean(process.env.KUBESDK_PARANOID),
       logRequests: options.logRequests ?? false,
       name: options.name ?? "kubesdk",
     };
@@ -187,62 +185,6 @@ export class ClusterConnection {
 
   use<T>(func: () => T) {
     return ClusterConnection.asyncLocalStorage.run(this, func);
-  }
-
-  private getOpenApi = async () => {
-    const result = this.client.get<Record<string, unknown>>("/openapi/v2").then(res => res.data);
-    const previous = this.getOpenApi;
-
-    this.getOpenApi = async () => result;
-    result.catch(() => (this.getOpenApi = previous));
-    return result;
-  };
-
-  private objectSchemaMapping = new Map<string, unknown>();
-
-  private async buildObjectSchemaMapping() {
-    const openApi = await this.getOpenApi();
-
-    if (!has(openApi, "definitions") || typeof openApi.definitions !== "object" || openApi.definitions === null) {
-      return;
-    }
-
-    for (const [name, definition] of Object.entries(openApi.definitions)) {
-      if (!has(definition, "x-kubernetes-group-version-kind")) {
-        continue;
-      }
-
-      const list = definition["x-kubernetes-group-version-kind"];
-
-      if (list && Array.isArray(list)) {
-        for (const entry of list) {
-          if (!has(entry, "version") || typeof entry.version !== "string") {
-            continue;
-          }
-
-          if (!has(entry, "kind") || typeof entry.kind !== "string") {
-            continue;
-          }
-
-          const key = `${
-            has(entry, "group") && typeof entry.group === "string" && entry.group ? `/${entry.group}/` : "/"
-          }${entry.version}/${entry.kind}`;
-
-          this.objectSchemaMapping.set(key, {
-            $ref: `#/definitions/${name}`,
-            definitions: openApi.definitions,
-          });
-        }
-      }
-    }
-  }
-
-  async getSchemaForObject(kind: string, apiVersion: string) {
-    if (this.objectSchemaMapping.size === 0) {
-      await this.buildObjectSchemaMapping();
-    }
-
-    return this.objectSchemaMapping.get(`/${apiVersion}/${kind}`);
   }
 
   private async request<T = object>(config: AxiosRequestConfig) {

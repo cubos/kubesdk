@@ -26,7 +26,7 @@ interface VersionSpec<SchemaT extends DeepReadonly<JSONSchema4>, VersionNameT ex
 export class CustomResourceControllerConfig {
   conversions = new Map<string, Map<string, (obj: any) => any>>();
 
-  constructor(public crdSpec: CustomResourceDefinitionSpec) {}
+  constructor(public spec: CustomResourceDefinitionSpec) {}
 }
 
 export class CustomResourceController<
@@ -55,7 +55,7 @@ export class CustomResourceController<
   addVersion<SchemaT extends DeepReadonly<JSONSchema4>, VersionNameT extends string>(
     versionSpec: VersionSpec<SchemaT, VersionNameT>,
   ) {
-    if (versionSpec.storage && this.config.crdSpec.versions.some(ver => ver.storage)) {
+    if (versionSpec.storage && this.config.spec.versions.some(ver => ver.storage)) {
       throw new Error("Only one version may have storage=true");
     }
 
@@ -64,7 +64,7 @@ export class CustomResourceController<
     type SpecT = AsTyped<SchemaT> extends { spec: infer T } ? T : {};
     type StatusT = AsTyped<SchemaT> extends { status: infer T } ? T : {};
 
-    this.config.crdSpec.versions.push({
+    this.config.spec.versions.push({
       name: versionSpec.name,
       served: versionSpec.served,
       storage: versionSpec.storage,
@@ -77,12 +77,12 @@ export class CustomResourceController<
       },
     });
 
-    const { kind } = this.config.crdSpec.names;
-    const apiPlural = this.config.crdSpec.names.plural;
-    const apiGroup = this.config.crdSpec.group;
+    const { kind } = this.config.spec.names;
+    const apiPlural = this.config.spec.names.plural;
+    const apiGroup = this.config.spec.group;
     const apiVersion = versionSpec.name;
 
-    if (this.config.crdSpec.scope === "Namespaced") {
+    if (this.config.spec.scope === "Namespaced") {
       const resultClass = wrapNamespacedResource<
         MetadataT,
         SpecT,

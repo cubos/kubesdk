@@ -1,6 +1,6 @@
 import * as QueryString from "querystring";
 import { LabelSelector } from "../core/types";
-import { has, throwError, validate } from "../utils";
+import { has, throwError } from "../utils";
 import { ClusterConnection } from "./ClusterConnection";
 import { ResourceListWatch } from "./ResourceListWatch";
 import { ResourceWatch } from "./ResourceWatch";
@@ -378,16 +378,6 @@ function implementStaticMethods(
       throw new Error(
         `Expected to receive ${apiVersion} ${kind}, but got ${obj.apiVersion as string} ${obj.kind as string}`,
       );
-    }
-
-    if (conn.options.paranoid) {
-      const schema = await conn.getSchemaForObject(kind, apiVersion);
-
-      if (!schema) {
-        throw new Error(`Unable to find schema for ${apiVersion} ${kind}`);
-      }
-
-      validate(schema, obj);
     }
 
     let spec: any = {};

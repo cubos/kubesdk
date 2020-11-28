@@ -22,7 +22,7 @@ export interface DeploymentSpec {
           maxUnavailable: string | number;
         };
       };
-  template: PodTemplateSpec;
+  template: PodTemplateSpec & { metadata: { labels: Record<string, string> } };
 }
 
 export interface DeploymentStatus {
