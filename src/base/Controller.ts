@@ -9,6 +9,7 @@ import { Role } from "../rbac/Role";
 import { RoleBinding } from "../rbac/RoleBinding";
 import { PolicyRule } from "../rbac/types";
 import { ClusterConnection } from "./ClusterConnection";
+import { CustomResourceController, CustomResourceControllerConfig } from "./CustomResourceController";
 
 interface ControllerCronJob {
   name: string;
@@ -22,6 +23,8 @@ export class Controller {
   private clusterPolicyRules: PolicyRule[] = [];
 
   private policyRules: PolicyRule[] = [];
+
+  private crds: CustomResourceControllerConfig[] = [];
 
   private secretEnvs: Array<{ name: string; values: Record<string, string> }> = [];
 
@@ -45,6 +48,11 @@ export class Controller {
 
   attachPolicyRules(rules: PolicyRule[]) {
     this.policyRules.push(...rules);
+  }
+
+  addCrd(crd: CustomResourceController<string, string, "Cluster" | "Namespaced">) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    this.crds.push((crd as any).config);
   }
 
   async cli(argv: string[] = process.argv.slice(2)) {
@@ -141,131 +149,14 @@ export class Controller {
         throw new Error("Missing 'image' option.");
       }
 
-      console.log("apply ServiceAccount");
-      const serviceAccount = await ServiceAccount.apply({
-        name: this.name,
+      await this.install({
         namespace: options.namespace,
+        image: options.image,
+        imagePullSecret: options.imagePullSecret,
+        callback(kind, name) {
+          console.log(`apply ${kind} ${name}`);
+        },
       });
-
-      if (this.policyRules.length > 0) {
-        console.log("apply Role");
-        const role = await Role.apply(
-          {
-            name: this.name,
-            namespace: options.namespace,
-          },
-          {
-            rules: this.policyRules,
-          },
-        );
-
-        console.log("apply RoleBinding");
-        await RoleBinding.apply(
-          {
-            name: this.name,
-            namespace: options.namespace,
-          },
-          {
-            roleRef: {
-              apiGroup: "rbac.authorization.k8s.io",
-              kind: "Role",
-              name: role.metadata.name,
-            },
-            subjects: [
-              {
-                kind: "ServiceAccount",
-                name: serviceAccount.metadata.name,
-                namespace: options.namespace,
-              },
-            ],
-          },
-        );
-      }
-
-      if (this.clusterPolicyRules.length > 0) {
-        console.log("apply ClusterRole");
-        const clusterRole = await ClusterRole.apply(
-          {
-            name: this.name,
-          },
-          {
-            rules: this.clusterPolicyRules,
-          },
-        );
-
-        console.log("apply ClusterRoleBinding");
-        await ClusterRoleBinding.apply(
-          {
-            name: this.name,
-          },
-          {
-            roleRef: {
-              apiGroup: "rbac.authorization.k8s.io",
-              kind: "ClusterRole",
-              name: clusterRole.metadata.name,
-            },
-            subjects: [
-              {
-                kind: "ServiceAccount",
-                name: serviceAccount.metadata.name,
-                namespace: options.namespace,
-              },
-            ],
-          },
-        );
-      }
-
-      for (const secretEnv of this.secretEnvs) {
-        console.log("apply Secret", secretEnv.name);
-        await Secret.apply(
-          {
-            name: `${this.name}-${secretEnv.name}`,
-            namespace: options.namespace,
-          },
-          {
-            data: {},
-            stringData: secretEnv.values,
-          },
-        );
-      }
-
-      for (const cronJob of this.cronJobs) {
-        console.log("apply CronJob", cronJob.name);
-        await CronJob.apply(
-          {
-            name: `${this.name}-${cronJob.name}`,
-            namespace: options.namespace,
-          },
-          {
-            schedule: cronJob.schedule,
-            jobTemplate: {
-              spec: {
-                template: {
-                  spec: {
-                    ...(options.imagePullSecret
-                      ? {
-                          imagePullSecrets: [{ name: options.imagePullSecret }],
-                        }
-                      : {}),
-                    containers: [
-                      {
-                        name: cronJob.name,
-                        image: options.image,
-                        args: ["run", "cronjob", cronJob.name],
-                        envFrom: this.secretEnvs.map(secretEnv => ({
-                          secretRef: { name: `${this.name}-${secretEnv.name}` },
-                        })),
-                      },
-                    ],
-                    serviceAccountName: serviceAccount.metadata.name,
-                    restartPolicy: "Never",
-                  },
-                },
-              },
-            },
-          },
-        );
-      }
     });
   }
 
@@ -305,15 +196,9 @@ export class Controller {
       logRequests: this.logRequests,
       paranoid: this.paranoid,
     }).use(async () => {
-      switch (args.shift()) {
+      switch (args[0]) {
         case "cronjob": {
-          const cronJob = this.cronJobs.find(x => x.name === args[0]);
-
-          if (!cronJob) {
-            throw new Error(`Unknown cronjob "${args[0]}"`);
-          }
-
-          await cronJob.func();
+          await this.run(args[0], args[1]);
           break;
         }
 
@@ -321,5 +206,177 @@ export class Controller {
           showHelp();
       }
     });
+  }
+
+  async install({
+    namespace,
+    image,
+    imagePullSecret,
+    callback,
+    apply,
+  }: {
+    namespace: string;
+    image: string;
+    imagePullSecret?: string;
+    callback?(kind: string, name: string): void;
+    apply?: boolean;
+  }) {
+    callback?.("ServiceAccount", this.name);
+    if (apply !== false) {
+      await ServiceAccount.apply({
+        name: this.name,
+        namespace,
+      });
+    }
+
+    if (this.policyRules.length > 0) {
+      callback?.("Role", this.name);
+      if (apply !== false) {
+        await Role.apply(
+          {
+            name: this.name,
+            namespace,
+          },
+          {
+            rules: this.policyRules,
+          },
+        );
+      }
+
+      callback?.("RoleBinding", this.name);
+      if (apply !== false) {
+        await RoleBinding.apply(
+          {
+            name: this.name,
+            namespace,
+          },
+          {
+            roleRef: {
+              apiGroup: "rbac.authorization.k8s.io",
+              kind: "Role",
+              name: this.name,
+            },
+            subjects: [
+              {
+                kind: "ServiceAccount",
+                name: this.name,
+                namespace,
+              },
+            ],
+          },
+        );
+      }
+    }
+
+    if (this.clusterPolicyRules.length > 0) {
+      callback?.("ClusterRole", this.name);
+      if (apply !== false) {
+        await ClusterRole.apply(
+          {
+            name: this.name,
+          },
+          {
+            rules: this.clusterPolicyRules,
+          },
+        );
+      }
+
+      callback?.("ClusterRoleBinding", this.name);
+      if (apply !== false) {
+        await ClusterRoleBinding.apply(
+          {
+            name: this.name,
+          },
+          {
+            roleRef: {
+              apiGroup: "rbac.authorization.k8s.io",
+              kind: "ClusterRole",
+              name: this.name,
+            },
+            subjects: [
+              {
+                kind: "ServiceAccount",
+                name: this.name,
+                namespace,
+              },
+            ],
+          },
+        );
+      }
+    }
+
+    for (const secretEnv of this.secretEnvs) {
+      callback?.("Secret", `${this.name}-${secretEnv.name}`);
+      if (apply !== false) {
+        await Secret.apply(
+          {
+            name: `${this.name}-${secretEnv.name}`,
+            namespace,
+          },
+          {
+            data: {},
+            stringData: secretEnv.values,
+          },
+        );
+      }
+    }
+
+    for (const cronJob of this.cronJobs) {
+      callback?.("Secret", `${this.name}-${cronJob.name}`);
+      if (apply !== false) {
+        await CronJob.apply(
+          {
+            name: `${this.name}-${cronJob.name}`,
+            namespace,
+          },
+          {
+            schedule: cronJob.schedule,
+            jobTemplate: {
+              spec: {
+                template: {
+                  spec: {
+                    ...(imagePullSecret
+                      ? {
+                          imagePullSecrets: [{ name: imagePullSecret }],
+                        }
+                      : {}),
+                    containers: [
+                      {
+                        name: cronJob.name,
+                        image,
+                        args: ["run", "cronjob", cronJob.name],
+                        envFrom: this.secretEnvs.map(secretEnv => ({
+                          secretRef: { name: `${this.name}-${secretEnv.name}` },
+                        })),
+                      },
+                    ],
+                    serviceAccountName: this.name,
+                    restartPolicy: "Never",
+                  },
+                },
+              },
+            },
+          },
+        );
+      }
+    }
+  }
+
+  async run(action: "cronjob", name: string) {
+    switch (action) {
+      case "cronjob": {
+        const cronJob = this.cronJobs.find(x => x.name === name);
+
+        if (!cronJob) {
+          throw new Error(`Unknown cronjob "${name}"`);
+        }
+
+        await cronJob.func();
+        break;
+      }
+
+      default:
+        throw "never";
+    }
   }
 }
