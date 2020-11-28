@@ -1,6 +1,7 @@
+import { AsTyped } from "as-typed";
 import { JSONSchema4 } from "json-schema";
 import { CustomResourceDefinitionNames, CustomResourceDefinitionSpec } from "../apiextensions/CustomResourceDefinition";
-import { AsTyped } from "as-typed";
+import { DeepReadonly, DeepUnReadonly } from "../utils";
 import {
   INamespacedResource,
   IResource,
@@ -9,7 +10,6 @@ import {
   wrapNamespacedResource,
   wrapResource,
 } from "./Resource";
-import { DeepReadonly, DeepUnReadonly } from "../utils";
 
 interface VersionSpec<SchemaT extends DeepReadonly<JSONSchema4>, VersionNameT extends string> {
   name: VersionNameT;
@@ -123,17 +123,17 @@ export class CustomResourceController<
     SourceClassT extends { apiVersion: string; new (...args: any[]): any },
     TargetClassT extends { apiVersion: string; new (...args: any[]): any }
   >(
-    vSource: SourceClassT["apiVersion"] extends `${GroupNameT}/${infer VersionNameT}` ? VersionNameT : never,
-    vTarget: TargetClassT["apiVersion"] extends `${GroupNameT}/${infer VersionNameT}` ? VersionNameT : never,
+    sourceClass: SourceClassT,
+    targetClass: TargetClassT,
     conversor: (obj: InstanceType<SourceClassT>) => InstanceType<TargetClassT>,
   ) {
-    let sourceEdge = this.conversions.get(vSource);
+    let sourceEdge = this.conversions.get(sourceClass.apiVersion);
 
     if (!sourceEdge) {
       sourceEdge = new Map<string, (obj: any) => any>();
-      this.conversions.set(vSource, sourceEdge);
+      this.conversions.set(sourceClass.apiVersion, sourceEdge);
     }
 
-    sourceEdge.set(vTarget, conversor);
+    sourceEdge.set(targetClass.apiVersion, conversor);
   }
 }

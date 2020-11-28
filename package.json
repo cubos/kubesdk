@@ -47,7 +47,7 @@
     "@typescript-eslint/eslint-plugin": "^4.8.2",
     "@typescript-eslint/parser": "^4.8.2",
     "@typescript-eslint/typescript-estree": "^4.8.2",
-    "as-typed": "0.0.0-dev.20201126011200",
+    "as-typed": "^1.0.0",
     "eslint": "^7.14.0",
     "eslint-config-prettier": "^6.15.0",
     "eslint-plugin-import": "^2.20.2",
