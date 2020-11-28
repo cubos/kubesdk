@@ -16,6 +16,8 @@ export interface ExtraMetadata {
   readonly uid: string;
   readonly resourceVersion: string;
   readonly creationTimestamp: string;
+  readonly deletionTimestamp?: string;
+  readonly generation?: number;
   finalizers?: string[];
 }
 
