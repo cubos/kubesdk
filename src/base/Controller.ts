@@ -51,8 +51,15 @@ export class Controller {
   }
 
   addCrd(crd: CustomResourceController<string, string, "Cluster" | "Namespaced">) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    this.crds.push((crd as any).config);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const { config }: { config: CustomResourceControllerConfig } = crd as any;
+
+    this.crds.push(config);
+    this.clusterPolicyRules.push({
+      apiGroups: [config.crdSpec.group],
+      resources: [config.crdSpec.names.plural],
+      verbs: ["*"],
+    });
   }
 
   async cli(argv: string[] = process.argv.slice(2)) {
