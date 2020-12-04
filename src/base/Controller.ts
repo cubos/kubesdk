@@ -317,7 +317,7 @@ export class Controller {
                     namespace,
                   },
                 },
-                conversionReviewVersions: ["v1"],
+                conversionReviewVersions: ["v1", "v1beta1"],
               },
             },
           },
