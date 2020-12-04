@@ -1,6 +1,7 @@
 import { randomBytes } from "crypto";
 import "jest-extended";
 import { Controller, CustomResourceController, Namespace } from "../../src";
+import { sleep } from "../../src/utils";
 
 describe("CRD", () => {
   const namespace = randomBytes(8).toString("hex");
@@ -50,6 +51,8 @@ describe("CRD", () => {
       image: "busybox",
       namespace,
     });
+
+    await sleep(100);
 
     expect(await TestV1.list()).toEqual([]);
 
