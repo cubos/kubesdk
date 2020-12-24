@@ -1,5 +1,6 @@
-import { INamespacedResource, NamespacedResource, wrapNamespacedResource } from "../base/Resource";
-import { ObjectReference } from "./types";
+import type { INamespacedResource } from "../base/Resource";
+import { NamespacedResource, wrapNamespacedResource } from "../base/Resource";
+import type { ObjectReference } from "./types";
 
 export interface EndpointsMetadata {}
 
@@ -26,7 +27,7 @@ export interface EndpointsSpec {
 
 export interface EndpointsStatus {}
 
-export interface Endpoints extends INamespacedResource<EndpointsMetadata, EndpointsSpec, EndpointsStatus> {}
+export type Endpoints = INamespacedResource<EndpointsMetadata, EndpointsSpec, EndpointsStatus>;
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const Endpoints = wrapNamespacedResource<
@@ -37,7 +38,7 @@ export const Endpoints = wrapNamespacedResource<
   "Endpoints",
   "v1"
 >(
-  // eslint-disable-next-line no-shadow
+  // eslint-disable-next-line @typescript-eslint/no-shadow
   class Endpoints extends NamespacedResource<EndpointsMetadata, EndpointsSpec, EndpointsStatus, "Endpoints", "v1"> {
     static kind = "Endpoints";
 

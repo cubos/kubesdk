@@ -1,4 +1,5 @@
-import { INamespacedResource, NamespacedResource, wrapNamespacedResource } from "../base/Resource";
+import type { INamespacedResource } from "../base/Resource";
+import { NamespacedResource, wrapNamespacedResource } from "../base/Resource";
 
 export interface LimitRangeMetadata {}
 
@@ -15,7 +16,7 @@ export interface LimitRangeSpec {
 
 export interface LimitRangeStatus {}
 
-export interface LimitRange extends INamespacedResource<LimitRangeMetadata, LimitRangeSpec, LimitRangeStatus> {}
+export type LimitRange = INamespacedResource<LimitRangeMetadata, LimitRangeSpec, LimitRangeStatus>;
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const LimitRange = wrapNamespacedResource<
@@ -26,7 +27,7 @@ export const LimitRange = wrapNamespacedResource<
   "LimitRange",
   "v1"
 >(
-  // eslint-disable-next-line no-shadow
+  // eslint-disable-next-line @typescript-eslint/no-shadow
   class LimitRange extends NamespacedResource<
     LimitRangeMetadata,
     LimitRangeSpec,

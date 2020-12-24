@@ -162,11 +162,11 @@ interface NodeSelectorRequirement {
   values: string[];
 }
 
-export interface NodeSelector {
-  nodeSelectorTerms?: NodeSelectorTerm[];
-}
-
 export interface NodeSelectorTerm {
   matchExpressions?: NodeSelectorRequirement[];
   matchFields?: NodeSelectorRequirement[];
+}
+
+export interface NodeSelector {
+  nodeSelectorTerms?: NodeSelectorTerm[];
 }

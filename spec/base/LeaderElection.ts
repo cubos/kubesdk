@@ -1,4 +1,5 @@
 import { randomBytes } from "crypto";
+
 import "jest-extended";
 import { Namespace } from "../../src";
 import { LeaderElection } from "../../src/base/LeaderElection";

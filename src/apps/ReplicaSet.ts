@@ -1,6 +1,7 @@
-import { INamespacedResource, NamespacedResource, wrapNamespacedResource } from "../base/Resource";
-import { PodTemplateSpec } from "../core/Pod";
-import { Condition, LabelSelector } from "../core/types";
+import type { INamespacedResource } from "../base/Resource";
+import { NamespacedResource, wrapNamespacedResource } from "../base/Resource";
+import type { PodTemplateSpec } from "../core/Pod";
+import type { Condition, LabelSelector } from "../core/types";
 
 export interface ReplicaSetMetadata {}
 
@@ -20,7 +21,7 @@ export interface ReplicaSetStatus {
   replicas: number;
 }
 
-export interface ReplicaSet extends INamespacedResource<ReplicaSetMetadata, ReplicaSetSpec, ReplicaSetStatus> {}
+export type ReplicaSet = INamespacedResource<ReplicaSetMetadata, ReplicaSetSpec, ReplicaSetStatus>;
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const ReplicaSet = wrapNamespacedResource<
@@ -31,7 +32,7 @@ export const ReplicaSet = wrapNamespacedResource<
   "ReplicaSet",
   "apps/v1"
 >(
-  // eslint-disable-next-line no-shadow
+  // eslint-disable-next-line @typescript-eslint/no-shadow
   class ReplicaSet extends NamespacedResource<
     ReplicaSetMetadata,
     ReplicaSetSpec,

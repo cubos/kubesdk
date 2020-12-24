@@ -1,5 +1,5 @@
-import { ClusterConnection, WatchStream } from "./ClusterConnection";
-import { IResource } from "./Resource";
+import type { ClusterConnection, WatchStream } from "./ClusterConnection";
+import type { IResource } from "./Resource";
 
 type InternalWatchEvent<T extends IResource<unknown, unknown, unknown>> =
   | { type: "ADDED"; object: T }
@@ -28,7 +28,7 @@ export class ResourceListWatch<T extends IResource<unknown, unknown, unknown>>
   constructor(
     private conn: ClusterConnection,
     private url: string,
-    private parseFunction: (object: object) => Promise<T>,
+    private parseFunction: (object: object) => T | Promise<T>,
   ) {}
 
   [Symbol.asyncIterator]() {

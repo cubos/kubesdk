@@ -9,20 +9,15 @@ import { ClusterRole } from "../rbac/ClusterRole";
 import { ClusterRoleBinding } from "../rbac/ClusterRoleBinding";
 import { Role } from "../rbac/Role";
 import { RoleBinding } from "../rbac/RoleBinding";
-import { PolicyRule } from "../rbac/types";
+import type { PolicyRule } from "../rbac/types";
 import { ControllerCli } from "./ControllerCli";
-import { CustomResourceController, CustomResourceControllerConfig } from "./CustomResourceController";
+import type { CustomResourceController, CustomResourceControllerConfig } from "./CustomResourceController";
 import { KubernetesError } from "./KubernetesError";
 
 interface ControllerCronJob {
   name: string;
   schedule: string;
   func(): Promise<void>;
-}
-
-interface InstalledResource {
-  kind: keyof typeof installableKinds;
-  name: string;
 }
 
 const installableKinds = {
@@ -38,6 +33,11 @@ const installableKinds = {
   Service,
   ServiceAccount,
 };
+
+interface InstalledResource {
+  kind: keyof typeof installableKinds;
+  name: string;
+}
 
 export class Controller {
   private cronJobs: ControllerCronJob[] = [];
@@ -72,7 +72,7 @@ export class Controller {
 
   addCrd(crd: CustomResourceController<string, string, "Cluster" | "Namespaced">) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const { config }: { config: CustomResourceControllerConfig } = crd as any;
+    const { config } = (crd as unknown) as { config: CustomResourceControllerConfig };
 
     this.crds.push(config);
     this.clusterPolicyRules.push({

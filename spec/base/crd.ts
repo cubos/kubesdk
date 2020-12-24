@@ -1,4 +1,5 @@
 import { randomBytes } from "crypto";
+
 import "jest-extended";
 import { Controller, CustomResourceController, Namespace } from "../../src";
 import { sleep } from "../../src/utils";
@@ -27,6 +28,7 @@ describe("CRD", () => {
       scope: "Namespaced",
     });
 
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     const TestV1 = crd.addVersion({
       name: "v1",
       schema: {

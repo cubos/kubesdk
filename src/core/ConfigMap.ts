@@ -1,4 +1,5 @@
-import { INamespacedResource, NamespacedResource, wrapNamespacedResource } from "../base/Resource";
+import type { INamespacedResource } from "../base/Resource";
+import { NamespacedResource, wrapNamespacedResource } from "../base/Resource";
 
 export interface ConfigMapMetadata {}
 
@@ -8,7 +9,7 @@ export interface ConfigMapSpec {
 
 export interface ConfigMapStatus {}
 
-export interface ConfigMap extends INamespacedResource<ConfigMapMetadata, ConfigMapSpec, ConfigMapStatus> {}
+export type ConfigMap = INamespacedResource<ConfigMapMetadata, ConfigMapSpec, ConfigMapStatus>;
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const ConfigMap = wrapNamespacedResource<
@@ -19,7 +20,7 @@ export const ConfigMap = wrapNamespacedResource<
   "ConfigMap",
   "v1"
 >(
-  // eslint-disable-next-line no-shadow
+  // eslint-disable-next-line @typescript-eslint/no-shadow
   class ConfigMap extends NamespacedResource<ConfigMapMetadata, ConfigMapSpec, ConfigMapStatus, "ConfigMap", "v1"> {
     static kind = "ConfigMap";
 

@@ -1,7 +1,8 @@
-import { CreatableMetadata, INamespacedResource, NamespacedResource, wrapNamespacedResource } from "../base/Resource";
-import { PersistentVolumeSpec } from "../core/PersistentVolume";
-import { PodTemplateSpec } from "../core/Pod";
-import { LabelSelector } from "../core/types";
+import type { CreatableMetadata, INamespacedResource } from "../base/Resource";
+import { NamespacedResource, wrapNamespacedResource } from "../base/Resource";
+import type { PersistentVolumeSpec } from "../core/PersistentVolume";
+import type { PodTemplateSpec } from "../core/Pod";
+import type { LabelSelector } from "../core/types";
 
 export interface StatefulSetMetadata {}
 
@@ -40,7 +41,7 @@ export interface StatefulSetStatus {
   updatedReplicas?: number;
 }
 
-export interface StatefulSet extends INamespacedResource<StatefulSetMetadata, StatefulSetSpec, StatefulSetStatus> {}
+export type StatefulSet = INamespacedResource<StatefulSetMetadata, StatefulSetSpec, StatefulSetStatus>;
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const StatefulSet = wrapNamespacedResource<
@@ -51,7 +52,7 @@ export const StatefulSet = wrapNamespacedResource<
   "StatefulSet",
   "apps/v1"
 >(
-  // eslint-disable-next-line no-shadow
+  // eslint-disable-next-line @typescript-eslint/no-shadow
   class StatefulSet extends NamespacedResource<
     StatefulSetMetadata,
     StatefulSetSpec,

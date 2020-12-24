@@ -1,6 +1,7 @@
-import { INamespacedResource, NamespacedResource, wrapNamespacedResource } from "../base/Resource";
-import { PodTemplateSpec } from "../core/Pod";
-import { LabelSelector } from "../core/types";
+import type { INamespacedResource } from "../base/Resource";
+import { NamespacedResource, wrapNamespacedResource } from "../base/Resource";
+import type { PodTemplateSpec } from "../core/Pod";
+import type { LabelSelector } from "../core/types";
 
 export interface DaemonSetMetadata {}
 
@@ -34,7 +35,7 @@ export interface DaemonSetStatus {
   updatedNumberScheduled?: number;
 }
 
-export interface DaemonSet extends INamespacedResource<DaemonSetMetadata, DaemonSetSpec, DaemonSetStatus> {}
+export type DaemonSet = INamespacedResource<DaemonSetMetadata, DaemonSetSpec, DaemonSetStatus>;
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const DaemonSet = wrapNamespacedResource<
@@ -45,7 +46,7 @@ export const DaemonSet = wrapNamespacedResource<
   "DaemonSet",
   "apps/v1"
 >(
-  // eslint-disable-next-line no-shadow
+  // eslint-disable-next-line @typescript-eslint/no-shadow
   class DaemonSet extends NamespacedResource<
     DaemonSetMetadata,
     DaemonSetSpec,

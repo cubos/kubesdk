@@ -1,6 +1,7 @@
-import { INamespacedResource, NamespacedResource, wrapNamespacedResource } from "../base/Resource";
-import { PodTemplateSpec } from "./Pod";
-import { Condition } from "./types";
+import type { INamespacedResource } from "../base/Resource";
+import { NamespacedResource, wrapNamespacedResource } from "../base/Resource";
+import type { PodTemplateSpec } from "./Pod";
+import type { Condition } from "./types";
 
 export interface ReplicationControllerMetadata {}
 
@@ -20,8 +21,11 @@ export interface ReplicationControllerStatus {
   replicas: number;
 }
 
-interface ReplicationController
-  extends INamespacedResource<ReplicationControllerMetadata, ReplicationControllerSpec, ReplicationControllerStatus> {}
+type ReplicationController = INamespacedResource<
+  ReplicationControllerMetadata,
+  ReplicationControllerSpec,
+  ReplicationControllerStatus
+>;
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const ReplicationController = wrapNamespacedResource<
@@ -32,7 +36,7 @@ export const ReplicationController = wrapNamespacedResource<
   "ReplicationController",
   "v1"
 >(
-  // eslint-disable-next-line no-shadow
+  // eslint-disable-next-line @typescript-eslint/no-shadow
   class ReplicationController extends NamespacedResource<
     ReplicationControllerMetadata,
     ReplicationControllerSpec,

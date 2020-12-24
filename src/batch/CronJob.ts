@@ -1,6 +1,8 @@
-import { INamespacedResource, NamespacedResource, wrapNamespacedResource } from "../base/Resource";
-import { ObjectReference } from "../core/types";
-import { Job, JobSpec } from "./Job";
+import type { INamespacedResource } from "../base/Resource";
+import { NamespacedResource, wrapNamespacedResource } from "../base/Resource";
+import type { ObjectReference } from "../core/types";
+import type { JobSpec } from "./Job";
+import { Job } from "./Job";
 
 export interface CronJobMetadata {}
 

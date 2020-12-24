@@ -1,5 +1,6 @@
-import { IResource, Resource, wrapResource } from "../base/Resource";
-import { Subject } from "./types";
+import type { IResource } from "../base/Resource";
+import { Resource, wrapResource } from "../base/Resource";
+import type { Subject } from "./types";
 
 export interface ClusterRoleBindingMetadata {}
 
@@ -14,8 +15,11 @@ export interface ClusterRoleBindingSpec {
 
 export interface ClusterRoleBindingStatus {}
 
-export interface ClusterRoleBinding
-  extends IResource<ClusterRoleBindingMetadata, ClusterRoleBindingSpec, ClusterRoleBindingStatus> {}
+export type ClusterRoleBinding = IResource<
+  ClusterRoleBindingMetadata,
+  ClusterRoleBindingSpec,
+  ClusterRoleBindingStatus
+>;
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const ClusterRoleBinding = wrapResource<
@@ -26,7 +30,7 @@ export const ClusterRoleBinding = wrapResource<
   "ClusterRoleBinding",
   "rbac.authorization.k8s.io/v1"
 >(
-  // eslint-disable-next-line no-shadow
+  // eslint-disable-next-line @typescript-eslint/no-shadow
   class ClusterRoleBinding extends Resource<
     ClusterRoleBindingMetadata,
     ClusterRoleBindingSpec,

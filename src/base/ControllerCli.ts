@@ -1,7 +1,8 @@
 import commandLineArgs from "command-line-args";
 import commandLineUsage from "command-line-usage";
+
 import { ClusterConnection } from "./ClusterConnection";
-import { Controller } from "./Controller";
+import type { Controller } from "./Controller";
 
 export class ControllerCli {
   constructor(private controller: Controller) {}

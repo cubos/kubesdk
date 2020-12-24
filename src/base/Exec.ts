@@ -1,5 +1,7 @@
 import { Writable } from "stream";
-import WebSocket from "ws";
+
+import type WebSocket from "ws";
+
 import { KubernetesError } from "./KubernetesError";
 
 export interface ExecOptions {
@@ -9,12 +11,33 @@ export interface ExecOptions {
   onClose(): void;
 }
 
+function arrayBufferToBuffer(arrayBuffer: ArrayBuffer) {
+  const buffer = Buffer.alloc(arrayBuffer.byteLength);
+  const array = new Uint8Array(arrayBuffer);
+
+  for (let i = 0; i < buffer.length; ++i) {
+    buffer[i] = array[i];
+  }
+
+  return buffer;
+}
+
 export class Exec {
   readonly stdin: Writable;
 
   constructor(private ws: WebSocket, options: ExecOptions) {
-    ws.on("message", msg => {
-      const buf = Array.isArray(msg) ? Buffer.concat(msg) : Buffer.from(msg);
+    ws.on("message", data => {
+      let buf: Buffer;
+
+      if (Array.isArray(data)) {
+        buf = Buffer.concat(data);
+      } else if (Buffer.isBuffer(data)) {
+        buf = data;
+      } else if (data instanceof ArrayBuffer) {
+        buf = arrayBufferToBuffer(data);
+      } else {
+        buf = Buffer.from(data);
+      }
 
       if (buf.length <= 1) {
         return;

@@ -95,4 +95,27 @@ describe("Namespace", () => {
     });
     await another.delete();
   });
+
+  /*
+   * test.concurrent("watch", async () => {
+   *   const ns = await Namespace.create({ generateName: "test-" });
+   */
+
+  //   const watch = ns.watch()[Symbol.asyncIterator]();
+
+  //   expect(await watch.next()).toMatchObject({ value: { type: "ADDED", object: ns } });
+
+  //   await ns.delete();
+
+  /*
+   *   await watch.next();
+   *   await watch.next();
+   */
+
+  //   expect(await watch.next()).toMatchObject({ value: { type: "ADDED", object: ns } });
+
+  /*
+   *   await watch.return?.();
+   * });
+   */
 });

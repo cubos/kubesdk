@@ -1,7 +1,9 @@
 import { ClusterConnection } from "../base/ClusterConnection";
-import { Exec, ExecOptions } from "../base/Exec";
-import { INamespacedResource, NamespacedResource, wrapNamespacedResource } from "../base/Resource";
-import {
+import type { ExecOptions } from "../base/Exec";
+import { Exec } from "../base/Exec";
+import type { INamespacedResource } from "../base/Resource";
+import { NamespacedResource, wrapNamespacedResource } from "../base/Resource";
+import type {
   Condition,
   GenericVolumeSource,
   LabelSelector,
@@ -547,7 +549,7 @@ export interface Pod extends INamespacedResource<PodMetadata, PodSpec, PodStatus
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const Pod = wrapNamespacedResource<PodMetadata, PodSpec, PodStatus, Pod, "Pod", "v1">(
-  // eslint-disable-next-line no-shadow
+  // eslint-disable-next-line @typescript-eslint/no-shadow
   class Pod extends NamespacedResource<PodMetadata, PodSpec, PodStatus, "Pod", "v1"> {
     static kind = "Pod";
 

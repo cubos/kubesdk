@@ -20,7 +20,6 @@ jobs:
       - run: npm i
       - run: npx tsc -noEmit
       - run: npm run eslint:check
-      - run: npm run prettier:check
 
   spec:
     runs-on: ubuntu-latest

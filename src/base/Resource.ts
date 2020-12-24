@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import * as QueryString from "querystring";
-import { LabelSelector } from "../core/types";
+
+import type { LabelSelector } from "../core/types";
 import { has, throwError } from "../utils";
 import { ClusterConnection } from "./ClusterConnection";
 import { ResourceListWatch } from "./ResourceListWatch";
@@ -42,139 +44,6 @@ export interface IResource<MetadataT, SpecT, StatusT> {
   save(): Promise<void>;
   saveStatus(): Promise<void>;
   watch(): AsyncGenerator<"DELETED" | "ADDED" | "MODIFIED">;
-}
-
-export interface IStaticResource<InstanceT, MetadataT, SpecT, StatusT> {
-  // eslint-disable-next-line @typescript-eslint/prefer-function-type
-  new (
-    metadata: CreatableMetadata & ExtraMetadata & MetadataT,
-    spec: SpecT & BasicResourceSpec,
-    status: StatusT,
-  ): InstanceT;
-}
-
-export class Resource<MetadataT, SpecT, StatusT, KindT extends string, ApiVersionT extends string>
-  implements IResource<MetadataT, SpecT, StatusT> {
-  constructor(
-    public metadata: CreatableMetadata & ExtraMetadata & MetadataT,
-    public spec: SpecT & BasicResourceSpec,
-    public status: StatusT,
-  ) {}
-
-  protected static isNamespaced = false;
-
-  static kind: string | null = null;
-
-  static apiVersion: string | null = null;
-
-  protected static apiPlural: string | null = null;
-
-  protected static hasInlineSpec = false;
-
-  private static parseRawObject: (
-    conn: ClusterConnection,
-    obj: unknown,
-  ) => Promise<Resource<unknown, unknown, unknown, string, string>>;
-
-  protected async parseRawObject(conn: ClusterConnection, obj: unknown): Promise<this> {
-    return (await this.base.parseRawObject(conn, obj)) as this;
-  }
-
-  private get base(): typeof Resource &
-    StaticResource<
-      MetadataT,
-      SpecT,
-      StatusT,
-      Resource<MetadataT, SpecT, StatusT, KindT, ApiVersionT>,
-      KindT,
-      ApiVersionT
-    > {
-    return this.constructor as typeof Resource &
-      StaticResource<
-        MetadataT,
-        SpecT,
-        StatusT,
-        Resource<MetadataT, SpecT, StatusT, KindT, ApiVersionT>,
-        KindT,
-        ApiVersionT
-      >;
-  }
-
-  async delete() {
-    const conn = ClusterConnection.current();
-    const raw = await conn.delete(this.metadata.selfLink, {
-      preconditions: {
-        resourceVersion: this.metadata.resourceVersion,
-        uid: this.metadata.uid,
-      },
-    });
-
-    return this.parseRawObject(conn, raw);
-  }
-
-  async reload() {
-    const conn = ClusterConnection.current();
-    const raw = await conn.get(this.metadata.selfLink);
-    const obj = await this.parseRawObject(conn, raw);
-
-    this.metadata = obj.metadata;
-    this.spec = obj.spec;
-    this.status = obj.status;
-  }
-
-  toJSON() {
-    const kind =
-      (this.base.kind as string | null) ?? throwError(new Error(`Please specify 'kind' for ${this.base.name}`));
-    const apiVersion =
-      (this.base.apiVersion as string | null) ??
-      throwError(new Error(`Please specify 'apiVersion' for ${this.base.name}`));
-
-    return {
-      apiVersion,
-      kind,
-      metadata: this.metadata,
-      status: this.status,
-      ...(this.base.hasInlineSpec ? this.spec : { spec: this.spec }),
-    };
-  }
-
-  async save() {
-    const conn = ClusterConnection.current();
-    const raw = await conn.put(this.metadata.selfLink, this.toJSON());
-    const obj = await this.parseRawObject(conn, raw);
-
-    this.metadata = obj.metadata;
-    this.spec = obj.spec;
-    this.status = obj.status;
-  }
-
-  async saveStatus() {
-    const conn = ClusterConnection.current();
-    const raw = await conn.put(`${this.metadata.selfLink}/status`, this.toJSON());
-    const obj = await this.parseRawObject(conn, raw);
-
-    this.metadata = obj.metadata;
-    this.spec = obj.spec;
-    this.status = obj.status;
-  }
-
-  async *watch() {
-    for await (const event of this.base.watch(this.metadata.name)) {
-      if (event.type === "DELETED" || event.object.metadata.uid !== this.metadata.uid) {
-        yield "DELETED";
-        return;
-      }
-
-      if (event.type === "ADDED" || event.object.metadata.resourceVersion === this.metadata.resourceVersion) {
-        continue;
-      }
-
-      this.metadata = event.object.metadata;
-      this.spec = event.object.spec;
-      this.status = event.object.status;
-      yield event.type;
-    }
-  }
 }
 
 type SelectableFields<KindT, IsNamespaced extends boolean> = KindT extends "Event"
@@ -223,17 +92,217 @@ type SelectableFields<KindT, IsNamespaced extends boolean> = KindT extends "Even
   : IsNamespaced extends true
   ? "metadata.name" | "metadata.namespace"
   : "metadata.name";
+export interface IStaticResource<InstanceT, MetadataT, SpecT, StatusT> {
+  // eslint-disable-next-line @typescript-eslint/prefer-function-type
+  new (
+    metadata: CreatableMetadata & ExtraMetadata & MetadataT,
+    spec: SpecT & BasicResourceSpec,
+    status: StatusT,
+  ): InstanceT;
+}
 
 type Selector<KindT, IsNamespaced extends boolean> = LabelSelector & {
   matchFields?: Record<SelectableFields<KindT, IsNamespaced>, string>;
   doesntMatchFields?: Record<SelectableFields<KindT, IsNamespaced>, string>;
 };
 
-export interface INamespacedResource<MetadataT, SpecT, StatusT>
-  extends IResource<MetadataT & { namespace: string }, SpecT, StatusT> {}
+export type INamespacedResource<MetadataT, SpecT, StatusT> = IResource<
+  MetadataT & { namespace: string },
+  SpecT,
+  StatusT
+>;
 
-export interface IStaticNamespacedResource<InstanceT, MetadataT, SpecT, StatusT>
-  extends IStaticResource<InstanceT, MetadataT & { namespace: string }, SpecT, StatusT> {}
+export type IStaticNamespacedResource<InstanceT, MetadataT, SpecT, StatusT> = IStaticResource<
+  InstanceT,
+  MetadataT & { namespace: string },
+  SpecT,
+  StatusT
+>;
+
+export interface StaticResource<
+  MetadataT,
+  SpecT,
+  StatusT,
+  T extends IResource<MetadataT, SpecT, StatusT>,
+  KindT extends string,
+  ApiVersionT extends string
+> {
+  kind: KindT;
+  apiVersion: ApiVersionT;
+  isNamespaced: false;
+  get(name: string): Promise<T>;
+  watch(name: string): ResourceWatch<T>;
+  delete(name: string): Promise<void>;
+  list(options?: { selector?: Selector<KindT, false>; limit?: number }): Promise<T[]>;
+  watchList(options?: { selector?: Selector<KindT, false> }): ResourceListWatch<T>;
+  create: {} extends SpecT
+    ? (
+        metadata: Omit<CreatableMetadata, "name"> & MetadataT & ({ generateName: string } | { name: string }),
+        spec?: SpecT,
+      ) => Promise<T>
+    : (
+        metadata: Omit<CreatableMetadata, "name"> & MetadataT & ({ generateName: string } | { name: string }),
+        spec: SpecT,
+      ) => Promise<T>;
+  apply: {} extends SpecT
+    ? (metadata: CreatableMetadata & MetadataT, spec?: SpecT) => Promise<T>
+    : (metadata: CreatableMetadata & MetadataT, spec: SpecT) => Promise<T>;
+}
+
+export interface StaticNamespacedResource<
+  MetadataT,
+  SpecT,
+  StatusT,
+  T extends INamespacedResource<MetadataT, SpecT, StatusT>,
+  KindT extends string,
+  ApiVersionT extends string
+> {
+  kind: KindT;
+  apiVersion: ApiVersionT;
+  isNamespaced: true;
+  get(namespace: string, name: string): Promise<T>;
+  watch(namespace: string, name: string): ResourceWatch<T>;
+  delete(namespace: string, name: string): Promise<void>;
+  list(options?: { namespace?: string; selector?: Selector<KindT, true>; limit?: number }): Promise<T[]>;
+  watchList(options?: { namespace?: string; selector?: Selector<KindT, true> }): ResourceListWatch<T>;
+  create: {} extends SpecT
+    ? (
+        metadata: Omit<CreatableMetadata, "name"> &
+          MetadataT & { namespace: string } & ({ generateName: string } | { name: string }),
+        spec?: SpecT,
+      ) => Promise<T>
+    : (
+        metadata: Omit<CreatableMetadata, "name"> &
+          MetadataT & { namespace: string } & ({ generateName: string } | { name: string }),
+        spec: SpecT,
+      ) => Promise<T>;
+  apply: {} extends SpecT
+    ? (metadata: CreatableMetadata & MetadataT & { namespace: string }, spec?: SpecT) => Promise<T>
+    : (metadata: CreatableMetadata & MetadataT & { namespace: string }, spec: SpecT) => Promise<T>;
+}
+export class Resource<MetadataT, SpecT, StatusT, KindT extends string, ApiVersionT extends string>
+  implements IResource<MetadataT, SpecT, StatusT> {
+  constructor(
+    public metadata: CreatableMetadata & ExtraMetadata & MetadataT,
+    public spec: SpecT & BasicResourceSpec,
+    public status: StatusT,
+  ) {}
+
+  protected static isNamespaced = false;
+
+  static kind: string | null = null;
+
+  static apiVersion: string | null = null;
+
+  protected static apiPlural: string | null = null;
+
+  protected static hasInlineSpec = false;
+
+  private static parseRawObject: (
+    conn: ClusterConnection,
+    obj: unknown,
+  ) => Resource<unknown, unknown, unknown, string, string>;
+
+  protected parseRawObject(conn: ClusterConnection, obj: unknown): this {
+    return this.base.parseRawObject(conn, obj) as this;
+  }
+
+  private get base(): typeof Resource &
+    StaticResource<
+      MetadataT,
+      SpecT,
+      StatusT,
+      Resource<MetadataT, SpecT, StatusT, KindT, ApiVersionT>,
+      KindT,
+      ApiVersionT
+    > {
+    return this.constructor as typeof Resource &
+      StaticResource<
+        MetadataT,
+        SpecT,
+        StatusT,
+        Resource<MetadataT, SpecT, StatusT, KindT, ApiVersionT>,
+        KindT,
+        ApiVersionT
+      >;
+  }
+
+  async delete() {
+    const conn = ClusterConnection.current();
+    const raw = await conn.delete(this.metadata.selfLink, {
+      preconditions: {
+        resourceVersion: this.metadata.resourceVersion,
+        uid: this.metadata.uid,
+      },
+    });
+
+    return this.parseRawObject(conn, raw);
+  }
+
+  async reload() {
+    const conn = ClusterConnection.current();
+    const raw = await conn.get(this.metadata.selfLink);
+    const obj = this.parseRawObject(conn, raw);
+
+    this.metadata = obj.metadata;
+    this.spec = obj.spec;
+    this.status = obj.status;
+  }
+
+  toJSON() {
+    const kind =
+      (this.base.kind as string | null) ?? throwError(new Error(`Please specify 'kind' for ${this.base.name}`));
+    const apiVersion =
+      (this.base.apiVersion as string | null) ??
+      throwError(new Error(`Please specify 'apiVersion' for ${this.base.name}`));
+
+    return {
+      apiVersion,
+      kind,
+      metadata: this.metadata,
+      status: this.status,
+      ...(this.base.hasInlineSpec ? this.spec : { spec: this.spec }),
+    };
+  }
+
+  async save() {
+    const conn = ClusterConnection.current();
+    const raw = await conn.put(this.metadata.selfLink, this.toJSON());
+    const obj = this.parseRawObject(conn, raw);
+
+    this.metadata = obj.metadata;
+    this.spec = obj.spec;
+    this.status = obj.status;
+  }
+
+  async saveStatus() {
+    const conn = ClusterConnection.current();
+    const raw = await conn.put(`${this.metadata.selfLink}/status`, this.toJSON());
+    const obj = this.parseRawObject(conn, raw);
+
+    this.metadata = obj.metadata;
+    this.spec = obj.spec;
+    this.status = obj.status;
+  }
+
+  async *watch() {
+    for await (const event of this.base.watch(this.metadata.name)) {
+      if (event.type === "DELETED" || event.object.metadata.uid !== this.metadata.uid) {
+        yield "DELETED";
+        return;
+      }
+
+      if (event.type === "ADDED" || event.object.metadata.resourceVersion === this.metadata.resourceVersion) {
+        continue;
+      }
+
+      this.metadata = event.object.metadata;
+      this.spec = event.object.spec;
+      this.status = event.object.status;
+      yield event.type;
+    }
+  }
+}
 
 export class NamespacedResource<
   MetadataT,
@@ -275,70 +344,6 @@ export class NamespacedResource<
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export interface StaticResource<
-  MetadataT,
-  SpecT,
-  StatusT,
-  T extends IResource<MetadataT, SpecT, StatusT>,
-  KindT extends string,
-  ApiVersionT extends string
-> {
-  kind: KindT;
-  apiVersion: ApiVersionT;
-  isNamespaced: false;
-  get(name: string): Promise<T>;
-  watch(name: string): ResourceWatch<T>;
-  delete(name: string): Promise<void>;
-  list(options?: { selector?: Selector<KindT, false>; limit?: number }): Promise<T[]>;
-  watchList(options?: { selector?: Selector<KindT, false> }): ResourceListWatch<T>;
-  create: {} extends SpecT
-    ? (
-        metadata: Omit<CreatableMetadata, "name"> & MetadataT & ({ generateName: string } | { name: string }),
-        spec?: SpecT,
-      ) => Promise<T>
-    : (
-        metadata: Omit<CreatableMetadata, "name"> & MetadataT & ({ generateName: string } | { name: string }),
-        spec: SpecT,
-      ) => Promise<T>;
-  apply: {} extends SpecT
-    ? (metadata: CreatableMetadata & MetadataT, spec?: SpecT) => Promise<T>
-    : (metadata: CreatableMetadata & MetadataT, spec: SpecT) => Promise<T>;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export interface StaticNamespacedResource<
-  MetadataT,
-  SpecT,
-  StatusT,
-  T extends INamespacedResource<MetadataT, SpecT, StatusT>,
-  KindT extends string,
-  ApiVersionT extends string
-> {
-  kind: KindT;
-  apiVersion: ApiVersionT;
-  isNamespaced: true;
-  get(namespace: string, name: string): Promise<T>;
-  watch(namespace: string, name: string): ResourceWatch<T>;
-  delete(namespace: string, name: string): Promise<void>;
-  list(options?: { namespace?: string; selector?: Selector<KindT, true>; limit?: number }): Promise<T[]>;
-  watchList(options?: { namespace?: string; selector?: Selector<KindT, true> }): ResourceListWatch<T>;
-  create: {} extends SpecT
-    ? (
-        metadata: Omit<CreatableMetadata, "name"> &
-          MetadataT & { namespace: string } & ({ generateName: string } | { name: string }),
-        spec?: SpecT,
-      ) => Promise<T>
-    : (
-        metadata: Omit<CreatableMetadata, "name"> &
-          MetadataT & { namespace: string } & ({ generateName: string } | { name: string }),
-        spec: SpecT,
-      ) => Promise<T>;
-  apply: {} extends SpecT
-    ? (metadata: CreatableMetadata & MetadataT & { namespace: string }, spec?: SpecT) => Promise<T>
-    : (metadata: CreatableMetadata & MetadataT & { namespace: string }, spec: SpecT) => Promise<T>;
-}
-
 function implementStaticMethods(
   klass: (typeof Resource &
     Omit<
@@ -368,7 +373,7 @@ function implementStaticMethods(
   const apiPlural = klass.apiPlural ?? throwError(new Error(`Please specify 'apiPlural' for ${klass.name}`));
   const { hasInlineSpec } = klass;
 
-  async function parseRawObject(conn: ClusterConnection, obj: object) {
+  function parseRawObject(conn: ClusterConnection, obj: object) {
     if (!has(obj, "kind") || !has(obj, "apiVersion") || !has(obj, "metadata")) {
       throw new Error(`Expected to receive an object with "kind", "apiVersion" and "metadata"`);
     }
@@ -399,14 +404,7 @@ function implementStaticMethods(
       ({ spec } = obj);
     }
 
-    return new klass(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      obj.metadata as any,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      spec,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      has(obj, "status") ? (obj.status as any) : {},
-    );
+    return new klass(obj.metadata as any, spec, has(obj, "status") ? (obj.status as any) : {});
   }
 
   ((klass as unknown) as Record<string, unknown>).parseRawObject = parseRawObject;
@@ -512,7 +510,7 @@ function implementStaticMethods(
       url = `/${base}/${apiVersion}/watch/${apiPlural}/${encodeURIComponent(namespaceOrName)}`;
     }
 
-    return new ResourceWatch<typeof klass.prototype>(conn, url, async raw => parseRawObject(conn, raw));
+    return new ResourceWatch<typeof klass.prototype>(conn, url, raw => parseRawObject(conn, raw));
   };
 
   klass.watchList = (
@@ -536,7 +534,7 @@ function implementStaticMethods(
     const conn = ClusterConnection.current();
     const url = `${apiUrl}?${QueryString.stringify(qs)}`;
 
-    return new ResourceListWatch<typeof klass.prototype>(conn, url, async raw => parseRawObject(conn, raw));
+    return new ResourceListWatch<typeof klass.prototype>(conn, url, raw => parseRawObject(conn, raw));
   };
 
   klass.delete = async (namespaceOrName: string, name?: string) => {
@@ -592,14 +590,12 @@ function implementStaticMethods(
 
     const innerKind = list.kind.replace(/List$/u, "");
 
-    return Promise.all(
-      list.items.map(async raw =>
-        parseRawObject(conn, {
-          kind: innerKind,
-          apiVersion: list.apiVersion,
-          ...raw,
-        }),
-      ),
+    return list.items.map(raw =>
+      parseRawObject(conn, {
+        kind: innerKind,
+        apiVersion: list.apiVersion,
+        ...raw,
+      }),
     );
   };
 

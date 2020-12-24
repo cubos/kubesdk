@@ -1,5 +1,6 @@
-import { INamespacedResource, NamespacedResource, wrapNamespacedResource } from "../base/Resource";
-import { Condition, LabelSelector, TypedLocalObjectReference } from "./types";
+import type { INamespacedResource } from "../base/Resource";
+import { NamespacedResource, wrapNamespacedResource } from "../base/Resource";
+import type { Condition, LabelSelector, TypedLocalObjectReference } from "./types";
 
 export interface PersistentVolumeClaimMetadata {}
 
@@ -26,8 +27,11 @@ export interface PersistentVolumeClaimStatus {
   phase: "Pending" | "Bound" | "Lost";
 }
 
-export interface PersistentVolumeClaim
-  extends INamespacedResource<PersistentVolumeClaimMetadata, PersistentVolumeClaimSpec, PersistentVolumeClaimStatus> {}
+export type PersistentVolumeClaim = INamespacedResource<
+  PersistentVolumeClaimMetadata,
+  PersistentVolumeClaimSpec,
+  PersistentVolumeClaimStatus
+>;
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const PersistentVolumeClaim = wrapNamespacedResource<
@@ -38,7 +42,7 @@ export const PersistentVolumeClaim = wrapNamespacedResource<
   "PersistentVolumeClaim",
   "v1"
 >(
-  // eslint-disable-next-line no-shadow
+  // eslint-disable-next-line @typescript-eslint/no-shadow
   class PersistentVolumeClaim extends NamespacedResource<
     PersistentVolumeClaimMetadata,
     PersistentVolumeClaimSpec,

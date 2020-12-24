@@ -1,6 +1,7 @@
-import { INamespacedResource, NamespacedResource, wrapNamespacedResource } from "../base/Resource";
-import { PodTemplateSpec } from "../core/Pod";
-import { Condition, LabelSelector } from "../core/types";
+import type { INamespacedResource } from "../base/Resource";
+import { NamespacedResource, wrapNamespacedResource } from "../base/Resource";
+import type { PodTemplateSpec } from "../core/Pod";
+import type { Condition, LabelSelector } from "../core/types";
 
 export interface DeploymentMetadata {}
 
@@ -36,7 +37,7 @@ export interface DeploymentStatus {
   updatedReplicas?: number;
 }
 
-export interface Deployment extends INamespacedResource<DeploymentMetadata, DeploymentSpec, DeploymentStatus> {}
+export type Deployment = INamespacedResource<DeploymentMetadata, DeploymentSpec, DeploymentStatus>;
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const Deployment = wrapNamespacedResource<
@@ -47,7 +48,7 @@ export const Deployment = wrapNamespacedResource<
   "Deployment",
   "apps/v1"
 >(
-  // eslint-disable-next-line no-shadow
+  // eslint-disable-next-line @typescript-eslint/no-shadow
   class Deployment extends NamespacedResource<
     DeploymentMetadata,
     DeploymentSpec,

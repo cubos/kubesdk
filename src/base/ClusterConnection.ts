@@ -1,14 +1,18 @@
 import { AsyncLocalStorage } from "async_hooks";
-import Axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from "axios";
-import * as AxiosLogger from "axios-logger";
-import axiosRetry from "axios-retry";
 import { accessSync, readFileSync } from "fs";
-import { IncomingMessage, OutgoingHttpHeaders } from "http";
+import type { IncomingMessage, OutgoingHttpHeaders } from "http";
 import { Agent } from "https";
 import { homedir } from "os";
 import { join } from "path";
-import { Readable, Transform } from "stream";
+import type { Readable } from "stream";
+import { Transform } from "stream";
+
+import axiosRetry from "axios-retry";
+import Axios from "axios";
+import type { AxiosError, AxiosInstance, AxiosRequestConfig } from "axios";
+import * as AxiosLogger from "axios-logger";
 import WebSocket from "ws";
+
 import { sleep } from "../utils";
 import { KubeConfig } from "./KubeConfig";
 import { KubernetesError } from "./KubernetesError";
@@ -43,6 +47,42 @@ function rethrowError(e: Error | AxiosError): never {
   }
 
   throw e;
+}
+
+export class WatchStream extends Transform {
+  private previous: Buffer[] = [];
+
+  constructor(private wrappedStream: Readable) {
+    super({
+      readableObjectMode: true,
+    });
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  _transform(chunk: any, encoding: BufferEncoding, callback: (error?: Error | null, data?: any) => void) {
+    let current = chunk instanceof Buffer ? chunk : Buffer.from(chunk, encoding);
+
+    for (;;) {
+      const index = current.indexOf(10);
+
+      if (index < 0) {
+        this.previous.push(current);
+        callback();
+        return;
+      }
+
+      const data = Buffer.concat([...this.previous, current.slice(0, index)]).toString();
+
+      this.previous = [];
+      current = current.slice(index + 1);
+
+      this.push(JSON.parse(data));
+    }
+  }
+
+  _destroy() {
+    this.wrappedStream.destroy();
+  }
 }
 
 export class ClusterConnection {
@@ -343,41 +383,5 @@ export class ClusterConnection {
         });
       });
     });
-  }
-}
-
-export class WatchStream extends Transform {
-  private previous: Buffer[] = [];
-
-  constructor(private wrappedStream: Readable) {
-    super({
-      readableObjectMode: true,
-    });
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  _transform(chunk: any, encoding: BufferEncoding, callback: (error?: Error | null, data?: any) => void) {
-    let current = chunk instanceof Buffer ? chunk : Buffer.from(chunk, encoding);
-
-    for (;;) {
-      const index = current.indexOf(10);
-
-      if (index < 0) {
-        this.previous.push(current);
-        callback();
-        return;
-      }
-
-      const data = Buffer.concat([...this.previous, current.slice(0, index)]).toString();
-
-      this.previous = [];
-      current = current.slice(index + 1);
-
-      this.push(JSON.parse(data));
-    }
-  }
-
-  _destroy() {
-    this.wrappedStream.destroy();
   }
 }

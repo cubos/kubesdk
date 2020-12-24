@@ -1,5 +1,6 @@
-import { INamespacedResource, NamespacedResource, wrapNamespacedResource } from "../base/Resource";
-import { ObjectReference } from "./types";
+import type { INamespacedResource } from "../base/Resource";
+import { NamespacedResource, wrapNamespacedResource } from "../base/Resource";
+import type { ObjectReference } from "./types";
 
 export interface EventMetadata {}
 
@@ -28,11 +29,11 @@ export interface EventSpec {
 
 export interface EventStatus {}
 
-export interface Event extends INamespacedResource<EventMetadata, EventSpec, EventStatus> {}
+export type Event = INamespacedResource<EventMetadata, EventSpec, EventStatus>;
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const Event = wrapNamespacedResource<EventMetadata, EventSpec, EventStatus, Event, "Event", "v1">(
-  // eslint-disable-next-line no-shadow
+  // eslint-disable-next-line @typescript-eslint/no-shadow
   class Event extends NamespacedResource<EventMetadata, EventSpec, EventStatus, "Event", "v1"> {
     static kind = "Event";
 

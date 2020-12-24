@@ -1,6 +1,7 @@
-import { IResource, Resource, wrapResource } from "../base/Resource";
-import { LabelSelector } from "../core/types";
-import { PolicyRule } from "./types";
+import type { IResource } from "../base/Resource";
+import { Resource, wrapResource } from "../base/Resource";
+import type { LabelSelector } from "../core/types";
+import type { PolicyRule } from "./types";
 
 export interface ClusterRoleMetadata {}
 
@@ -13,7 +14,7 @@ export interface ClusterRoleSpec {
 
 export interface ClusterRoleStatus {}
 
-export interface ClusterRole extends IResource<ClusterRoleMetadata, ClusterRoleSpec, ClusterRoleStatus> {}
+export type ClusterRole = IResource<ClusterRoleMetadata, ClusterRoleSpec, ClusterRoleStatus>;
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const ClusterRole = wrapResource<
@@ -24,7 +25,7 @@ export const ClusterRole = wrapResource<
   "ClusterRole",
   "rbac.authorization.k8s.io/v1"
 >(
-  // eslint-disable-next-line no-shadow
+  // eslint-disable-next-line @typescript-eslint/no-shadow
   class ClusterRole extends Resource<
     ClusterRoleMetadata,
     ClusterRoleSpec,

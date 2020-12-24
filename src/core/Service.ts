@@ -1,4 +1,5 @@
-import { INamespacedResource, NamespacedResource, wrapNamespacedResource } from "../base/Resource";
+import type { INamespacedResource } from "../base/Resource";
+import { NamespacedResource, wrapNamespacedResource } from "../base/Resource";
 
 export interface ServiceMetadata {}
 
@@ -57,11 +58,11 @@ export interface ServiceStatus {
   };
 }
 
-export interface Service extends INamespacedResource<ServiceMetadata, ServiceSpec, ServiceStatus> {}
+export type Service = INamespacedResource<ServiceMetadata, ServiceSpec, ServiceStatus>;
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const Service = wrapNamespacedResource<ServiceMetadata, ServiceSpec, ServiceStatus, Service, "Service", "v1">(
-  // eslint-disable-next-line no-shadow
+  // eslint-disable-next-line @typescript-eslint/no-shadow
   class Service extends NamespacedResource<ServiceMetadata, ServiceSpec, ServiceStatus, "Service", "v1"> {
     static kind = "Service";
 

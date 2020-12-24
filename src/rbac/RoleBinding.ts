@@ -1,5 +1,6 @@
-import { INamespacedResource, NamespacedResource, wrapNamespacedResource } from "../base/Resource";
-import { Subject } from "./types";
+import type { INamespacedResource } from "../base/Resource";
+import { NamespacedResource, wrapNamespacedResource } from "../base/Resource";
+import type { Subject } from "./types";
 
 export interface RoleBindingMetadata {}
 
@@ -14,7 +15,7 @@ export interface RoleBindingSpec {
 
 export interface RoleBindingStatus {}
 
-export interface RoleBinding extends INamespacedResource<RoleBindingMetadata, RoleBindingSpec, RoleBindingStatus> {}
+export type RoleBinding = INamespacedResource<RoleBindingMetadata, RoleBindingSpec, RoleBindingStatus>;
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const RoleBinding = wrapNamespacedResource<
@@ -25,7 +26,7 @@ export const RoleBinding = wrapNamespacedResource<
   "RoleBinding",
   "rbac.authorization.k8s.io/v1"
 >(
-  // eslint-disable-next-line no-shadow
+  // eslint-disable-next-line @typescript-eslint/no-shadow
   class RoleBinding extends NamespacedResource<
     RoleBindingMetadata,
     RoleBindingSpec,

@@ -1,5 +1,7 @@
 import { readFileSync } from "fs";
+
 import YAML from "js-yaml";
+
 import { has } from "../utils";
 
 class Cluster {

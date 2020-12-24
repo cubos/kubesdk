@@ -1,5 +1,6 @@
-import { INamespacedResource, NamespacedResource, wrapNamespacedResource } from "../base/Resource";
-import { PolicyRule } from "./types";
+import type { INamespacedResource } from "../base/Resource";
+import { NamespacedResource, wrapNamespacedResource } from "../base/Resource";
+import type { PolicyRule } from "./types";
 
 export interface RoleMetadata {}
 
@@ -9,7 +10,7 @@ export interface RoleSpec {
 
 export interface RoleStatus {}
 
-export interface Role extends INamespacedResource<RoleMetadata, RoleSpec, RoleStatus> {}
+export type Role = INamespacedResource<RoleMetadata, RoleSpec, RoleStatus>;
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const Role = wrapNamespacedResource<
@@ -20,7 +21,7 @@ export const Role = wrapNamespacedResource<
   "Role",
   "rbac.authorization.k8s.io/v1"
 >(
-  // eslint-disable-next-line no-shadow
+  // eslint-disable-next-line @typescript-eslint/no-shadow
   class Role extends NamespacedResource<RoleMetadata, RoleSpec, RoleStatus, "Role", "rbac.authorization.k8s.io/v1"> {
     static kind = "Role";
 

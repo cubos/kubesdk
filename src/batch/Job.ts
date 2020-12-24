@@ -1,6 +1,8 @@
-import { INamespacedResource, NamespacedResource, wrapNamespacedResource } from "../base/Resource";
-import { Pod, PodTemplateSpec } from "../core/Pod";
-import { Condition, LabelSelector } from "../core/types";
+import type { INamespacedResource } from "../base/Resource";
+import { NamespacedResource, wrapNamespacedResource } from "../base/Resource";
+import type { PodTemplateSpec } from "../core/Pod";
+import { Pod } from "../core/Pod";
+import type { Condition, LabelSelector } from "../core/types";
 
 export interface JobMetadata {}
 

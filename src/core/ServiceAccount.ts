@@ -1,5 +1,6 @@
-import { INamespacedResource, NamespacedResource, wrapNamespacedResource } from "../base/Resource";
-import { LocalObjectReference } from "./types";
+import type { INamespacedResource } from "../base/Resource";
+import { NamespacedResource, wrapNamespacedResource } from "../base/Resource";
+import type { LocalObjectReference } from "./types";
 
 export interface ServiceAccountMetadata {}
 
@@ -11,8 +12,7 @@ export interface ServiceAccountSpec {
 
 export interface ServiceAccountStatus {}
 
-export interface ServiceAccount
-  extends INamespacedResource<ServiceAccountMetadata, ServiceAccountSpec, ServiceAccountStatus> {}
+export type ServiceAccount = INamespacedResource<ServiceAccountMetadata, ServiceAccountSpec, ServiceAccountStatus>;
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const ServiceAccount = wrapNamespacedResource<
@@ -23,7 +23,7 @@ export const ServiceAccount = wrapNamespacedResource<
   "ServiceAccount",
   "v1"
 >(
-  // eslint-disable-next-line no-shadow
+  // eslint-disable-next-line @typescript-eslint/no-shadow
   class ServiceAccount extends NamespacedResource<
     ServiceAccountMetadata,
     ServiceAccountSpec,

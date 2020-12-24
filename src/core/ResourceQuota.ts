@@ -1,4 +1,5 @@
-import { INamespacedResource, NamespacedResource, wrapNamespacedResource } from "../base/Resource";
+import type { INamespacedResource } from "../base/Resource";
+import { NamespacedResource, wrapNamespacedResource } from "../base/Resource";
 
 export interface ResourceQuotaMetadata {}
 
@@ -25,8 +26,7 @@ export interface ResourceQuotaStatus {
   used: Record<string, string>;
 }
 
-export interface ResourceQuota
-  extends INamespacedResource<ResourceQuotaMetadata, ResourceQuotaSpec, ResourceQuotaStatus> {}
+export type ResourceQuota = INamespacedResource<ResourceQuotaMetadata, ResourceQuotaSpec, ResourceQuotaStatus>;
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const ResourceQuota = wrapNamespacedResource<
@@ -37,7 +37,7 @@ export const ResourceQuota = wrapNamespacedResource<
   "ResourceQuota",
   "v1"
 >(
-  // eslint-disable-next-line no-shadow
+  // eslint-disable-next-line @typescript-eslint/no-shadow
   class ResourceQuota extends NamespacedResource<
     ResourceQuotaMetadata,
     ResourceQuotaSpec,

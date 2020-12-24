@@ -1,5 +1,6 @@
-import { INamespacedResource, NamespacedResource, wrapNamespacedResource } from "../base/Resource";
-import { GenericVolumeSource, NodeSelector, ObjectReference, SecretReference } from "./types";
+import type { INamespacedResource } from "../base/Resource";
+import { NamespacedResource, wrapNamespacedResource } from "../base/Resource";
+import type { GenericVolumeSource, NodeSelector, ObjectReference, SecretReference } from "./types";
 
 export interface PersistentVolumeMetadata {}
 
@@ -135,8 +136,11 @@ export interface PersistentVolumeStatus {
   phase: "Pending" | "Available" | "Bound" | "Released" | "Failed";
 }
 
-export interface PersistentVolume
-  extends INamespacedResource<PersistentVolumeMetadata, PersistentVolumeSpec, PersistentVolumeStatus> {}
+export type PersistentVolume = INamespacedResource<
+  PersistentVolumeMetadata,
+  PersistentVolumeSpec,
+  PersistentVolumeStatus
+>;
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const PersistentVolume = wrapNamespacedResource<
@@ -147,7 +151,7 @@ export const PersistentVolume = wrapNamespacedResource<
   "PersistentVolume",
   "v1"
 >(
-  // eslint-disable-next-line no-shadow
+  // eslint-disable-next-line @typescript-eslint/no-shadow
   class PersistentVolume extends NamespacedResource<
     PersistentVolumeMetadata,
     PersistentVolumeSpec,

@@ -1,15 +1,14 @@
-import { AsTyped } from "as-typed";
-import { JSONSchema4 } from "json-schema";
-import { CustomResourceDefinitionNames, CustomResourceDefinitionSpec } from "../apiextensions/CustomResourceDefinition";
-import { DeepReadonly, DeepUnReadonly } from "../utils";
-import {
-  INamespacedResource,
-  IResource,
-  NamespacedResource,
-  Resource,
-  wrapNamespacedResource,
-  wrapResource,
-} from "./Resource";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { AsTyped } from "as-typed";
+import type { JSONSchema4 } from "json-schema";
+
+import type {
+  CustomResourceDefinitionNames,
+  CustomResourceDefinitionSpec,
+} from "../apiextensions/CustomResourceDefinition";
+import type { DeepReadonly, DeepUnReadonly } from "../utils";
+import type { INamespacedResource, IResource } from "./Resource";
+import { NamespacedResource, Resource, wrapNamespacedResource, wrapResource } from "./Resource";
 
 interface VersionSpec<SchemaT extends DeepReadonly<JSONSchema4>, VersionNameT extends string> {
   name: VersionNameT;

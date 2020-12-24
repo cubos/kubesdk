@@ -1,5 +1,6 @@
-import { IResource, Resource, wrapResource } from "../base/Resource";
-import { Condition } from "./types";
+import type { IResource } from "../base/Resource";
+import { Resource, wrapResource } from "../base/Resource";
+import type { Condition } from "./types";
 
 export interface ComponentStatusMetadata {}
 
@@ -9,8 +10,7 @@ export interface ComponentStatusSpec {
 
 export interface ComponentStatusStatus {}
 
-export interface ComponentStatus
-  extends IResource<ComponentStatusMetadata, ComponentStatusSpec, ComponentStatusStatus> {}
+export type ComponentStatus = IResource<ComponentStatusMetadata, ComponentStatusSpec, ComponentStatusStatus>;
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const ComponentStatus = wrapResource<
@@ -21,7 +21,7 @@ export const ComponentStatus = wrapResource<
   "ComponentStatus",
   "v1"
 >(
-  // eslint-disable-next-line no-shadow
+  // eslint-disable-next-line @typescript-eslint/no-shadow
   class ComponentStatus extends Resource<
     ComponentStatusMetadata,
     ComponentStatusSpec,

@@ -1,4 +1,5 @@
-import { INamespacedResource, NamespacedResource, wrapNamespacedResource } from "../base/Resource";
+import type { INamespacedResource } from "../base/Resource";
+import { NamespacedResource, wrapNamespacedResource } from "../base/Resource";
 
 export interface SecretMetadata {}
 
@@ -10,11 +11,11 @@ export interface SecretSpec {
 
 export interface SecretStatus {}
 
-export interface Secret extends INamespacedResource<SecretMetadata, SecretSpec, SecretStatus> {}
+export type Secret = INamespacedResource<SecretMetadata, SecretSpec, SecretStatus>;
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const Secret = wrapNamespacedResource<SecretMetadata, SecretSpec, SecretStatus, Secret, "Secret", "v1">(
-  // eslint-disable-next-line no-shadow
+  // eslint-disable-next-line @typescript-eslint/no-shadow
   class Secret extends NamespacedResource<SecretMetadata, SecretSpec, SecretStatus, "Secret", "v1"> {
     static kind = "Secret";
 

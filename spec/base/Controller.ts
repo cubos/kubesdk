@@ -1,4 +1,5 @@
 import { randomBytes } from "crypto";
+
 import "jest-extended";
 import { Controller, KubernetesError, Namespace, ServiceAccount } from "../../src";
 
