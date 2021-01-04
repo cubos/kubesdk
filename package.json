@@ -30,7 +30,7 @@
     "axios-retry": "^3.1.9",
     "command-line-args": "^5.1.1",
     "command-line-usage": "^6.1.1",
-    "js-yaml": "^3.14.1",
+    "js-yaml": "^4.0.0",
     "ws": "^7.4.1"
   },
   "devDependencies": {
