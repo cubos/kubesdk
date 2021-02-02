@@ -7,10 +7,10 @@ import { join } from "path";
 import type { Readable } from "stream";
 import { Transform } from "stream";
 
-import axiosRetry from "axios-retry";
 import Axios from "axios";
 import type { AxiosError, AxiosInstance, AxiosRequestConfig } from "axios";
 import * as AxiosLogger from "axios-logger";
+import axiosRetry from "axios-retry";
 import WebSocket from "ws";
 
 import { sleep } from "../utils";

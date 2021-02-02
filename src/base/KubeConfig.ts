@@ -208,9 +208,9 @@ export class KubeConfig {
   readonly currentContext: Context;
 
   constructor(raw: string) {
-    const config = YAML.safeLoad(raw);
+    const config = YAML.load(raw);
 
-    if (typeof config !== "object") {
+    if (typeof config !== "object" || !config) {
       throw new Error("Expected to see an object");
     }
 

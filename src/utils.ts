@@ -5,7 +5,6 @@ export class SchemaValidationError extends Error {}
 export function validate(schema: unknown, data: unknown) {
   const ajv = new AJV({
     allErrors: true,
-    format: false,
     coerceTypes: true,
   });
 
