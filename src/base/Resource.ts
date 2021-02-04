@@ -206,7 +206,7 @@ export class Resource<MetadataT, SpecT, StatusT, KindT extends string, ApiVersio
     return this.base.parseRawObject(conn, obj) as this;
   }
 
-  protected get selfLink() {
+  protected get selfLink(): string {
     return `/api/v1/${this.base.apiPlural}/${this.metadata.name}`;
   }
 
@@ -328,7 +328,7 @@ export class NamespacedResource<
       >;
   }
 
-  protected get selfLink() {
+  protected get selfLink(): string {
     return `/api/v1/namespaces/${this.metadata.namespace}/${this.nsbase.apiPlural}/${this.metadata.name}`;
   }
 
