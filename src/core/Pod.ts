@@ -569,7 +569,7 @@ export const Pod = wrapNamespacedResource<PodMetadata, PodSpec, PodStatus, Pod, 
 
     async exec(containerName: string, command: string[], options?: ExecOptions) {
       const ws = await ClusterConnection.current().websocket(
-        `${this.metadata.selfLink}/exec?container=${encodeURIComponent(containerName)}&command=${command
+        `${this.selfLink}/exec?container=${encodeURIComponent(containerName)}&command=${command
           .map(x => encodeURIComponent(x))
           .join("&command=")}&stdin=1&stdout=1&stderr=1`,
       );

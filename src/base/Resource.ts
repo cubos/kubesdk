@@ -22,7 +22,6 @@ export interface CreatableMetadata {
 }
 
 export interface ExtraMetadata {
-  readonly selfLink: string;
   readonly uid: string;
   readonly resourceVersion: string;
   readonly creationTimestamp: string;
@@ -207,6 +206,10 @@ export class Resource<MetadataT, SpecT, StatusT, KindT extends string, ApiVersio
     return this.base.parseRawObject(conn, obj) as this;
   }
 
+  protected get selfLink() {
+    return `/api/v1/${this.base.apiPlural}/${this.metadata.name}`;
+  }
+
   private get base(): typeof Resource &
     StaticResource<
       MetadataT,
@@ -229,7 +232,7 @@ export class Resource<MetadataT, SpecT, StatusT, KindT extends string, ApiVersio
 
   async delete() {
     const conn = ClusterConnection.current();
-    const raw = await conn.delete(this.metadata.selfLink, {
+    const raw = await conn.delete(this.selfLink, {
       preconditions: {
         resourceVersion: this.metadata.resourceVersion,
         uid: this.metadata.uid,
@@ -241,7 +244,7 @@ export class Resource<MetadataT, SpecT, StatusT, KindT extends string, ApiVersio
 
   async reload() {
     const conn = ClusterConnection.current();
-    const raw = await conn.get(this.metadata.selfLink);
+    const raw = await conn.get(this.selfLink);
     const obj = this.parseRawObject(conn, raw);
 
     this.metadata = obj.metadata;
@@ -267,7 +270,7 @@ export class Resource<MetadataT, SpecT, StatusT, KindT extends string, ApiVersio
 
   async save() {
     const conn = ClusterConnection.current();
-    const raw = await conn.put(this.metadata.selfLink, this.toJSON());
+    const raw = await conn.put(this.selfLink, this.toJSON());
     const obj = this.parseRawObject(conn, raw);
 
     this.metadata = obj.metadata;
@@ -277,7 +280,7 @@ export class Resource<MetadataT, SpecT, StatusT, KindT extends string, ApiVersio
 
   async saveStatus() {
     const conn = ClusterConnection.current();
-    const raw = await conn.put(`${this.metadata.selfLink}/status`, this.toJSON());
+    const raw = await conn.put(`${this.selfLink}/status`, this.toJSON());
     const obj = this.parseRawObject(conn, raw);
 
     this.metadata = obj.metadata;
@@ -323,6 +326,10 @@ export class NamespacedResource<
         KindT,
         ApiVersionT
       >;
+  }
+
+  protected get selfLink() {
+    return `/api/v1/namespaces/${this.metadata.namespace}/${this.nsbase.apiPlural}/${this.metadata.name}`;
   }
 
   async *watch() {
