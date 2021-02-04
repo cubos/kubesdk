@@ -47,7 +47,9 @@ describe("CRD", () => {
       storage: true,
     });
 
-    controller.addCrd(crd);
+    // Workaround for https://github.com/microsoft/TypeScript/issues/41406
+    // Typing is correct and "as any" shouldn't be needed.
+    controller.addCrd(crd as any);
 
     await controller.install({
       image: "busybox",

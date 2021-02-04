@@ -59,9 +59,10 @@ export class CustomResourceController<
     }
 
     type ApiVersionT = `${GroupNameT}/${VersionNameT}`;
-    type MetadataT = AsTyped<SchemaT> extends { metadata: infer T } ? T : {};
-    type SpecT = AsTyped<SchemaT> extends { spec: infer T } ? T : {};
-    type StatusT = AsTyped<SchemaT> extends { status: infer T } ? T : {};
+    type ObjT = AsTyped<SchemaT>;
+    type MetadataT = ObjT extends { metadata: infer T } ? T : {};
+    type SpecT = ObjT extends { spec: infer T } ? T : {};
+    type StatusT = ObjT extends { status: infer T } ? T : {};
 
     this.config.spec.versions.push({
       name: versionSpec.name,
