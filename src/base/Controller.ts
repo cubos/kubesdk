@@ -114,11 +114,10 @@ export class Controller {
     callback?(kind: keyof typeof installableKinds, name: string): void;
     apply?: boolean;
   }) {
-    let previousList: InstalledResource[] | undefined;
+    let toRemoveAfterInstall: InstalledResource[] | undefined;
+    const targetList = await this.installList(namespace);
 
     if (apply !== false) {
-      const targetList = await this.installList(namespace);
-
       try {
         await ConfigMap.create(
           {
@@ -135,9 +134,13 @@ export class Controller {
         if (err instanceof KubernetesError.Conflict) {
           const controllerConfig = await ConfigMap.get(namespace, this.name);
 
-          previousList = JSON.parse(controllerConfig.spec.data.installedResources ?? "[]") as InstalledResource[];
+          const targetListSet = new Set(targetList.map(x => JSON.stringify(x)));
 
-          const newList = [...new Set([...targetList, ...previousList].map(x => JSON.stringify(x)))].map(
+          toRemoveAfterInstall = (JSON.parse(
+            controllerConfig.spec.data.installedResources ?? "[]",
+          ) as InstalledResource[]).filter(x => !targetListSet.has(JSON.stringify(x)));
+
+          const newList = [...new Set([...targetList, ...toRemoveAfterInstall].map(x => JSON.stringify(x)))].map(
             x => JSON.parse(x) as InstalledResource,
           );
 
@@ -389,10 +392,8 @@ export class Controller {
     }
 
     if (apply !== false) {
-      const targetList = await this.installList(namespace);
-
-      if (previousList) {
-        for (const { kind, name } of previousList) {
+      if (toRemoveAfterInstall) {
+        for (const { kind, name } of toRemoveAfterInstall) {
           const resourceClass = installableKinds[kind];
 
           try {
