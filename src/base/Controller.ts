@@ -115,7 +115,7 @@ export class Controller {
     apply?: boolean;
   }) {
     let toRemoveAfterInstall: InstalledResource[] | undefined;
-    const targetList = await this.installList(namespace);
+    const targetList = apply === false ? [] : await this.installList(namespace);
 
     if (apply !== false) {
       try {
