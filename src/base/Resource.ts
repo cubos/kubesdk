@@ -2,7 +2,7 @@
 import * as QueryString from "querystring";
 
 import type { LabelSelector } from "../core/types";
-import { has, throwError } from "../utils";
+import { has, sleep, throwError } from "../utils";
 import { ClusterConnection } from "./ClusterConnection";
 import { ResourceListWatch } from "./ResourceListWatch";
 import { ResourceWatch } from "./ResourceWatch";
@@ -634,6 +634,11 @@ function implementStaticMethods(
       metadata,
       ...(hasInlineSpec ? (spec as any) ?? {} : { spec: spec ?? {} }),
     });
+
+    // Kubernetes responds the POST request before the resource is really accessible with a GET.
+    // An use could create and then access and receive a NotFound error. This sleep prevents that.
+    // TODO: Find a better way to do that without this sleep.
+    await sleep(50);
 
     return parseRawObject(conn, raw);
   };
