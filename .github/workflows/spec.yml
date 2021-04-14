@@ -1,13 +1,5 @@
-name: "spec"
-on:
-  push:
-  pull_request:
-    branches:
-      # Branches from forks have the form 'user:branch-name' so we only run
-      # this job on pull_request events for branches that look like fork
-      # branches. Without this we would end up running this job twice for non
-      # forked PRs, once for the push and then once for opening the PR.
-      - "**:**"
+name: spec
+on: [push, pull_request]
 
 jobs:
   lint:
@@ -42,7 +34,7 @@ jobs:
           node-version: ${{ matrix.node }}
       - uses: engineerd/setup-kind@v0.5.0
         with:
-          version: "v0.10.0"
+          version: v0.10.0
           image: ${{ matrix.kube }}
       - run: npm install
       - run: npm test
