@@ -4,3 +4,4 @@ openapi.json
 coverage
 package-lock.json
 dist
+src/main.ts
