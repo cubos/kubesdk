@@ -36,7 +36,7 @@ export const VolumeSnapshotClass = wrapResource<
   > {
     static kind = "VolumeSnapshotClass";
 
-    protected static apiPlural = "VolumeSnapshotClasss";
+    protected static apiPlural = "VolumeSnapshotClass";
 
     static apiVersion = "snapshot.storage.k8s.io/v1beta1";
 
