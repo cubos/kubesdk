@@ -15,10 +15,12 @@ jobs:
       - run: |
           npm install -g json && json -I -f package.json -e '
             this.version = "0.0.0-dev.'$(date -u +'%Y%m%d%H%M%S')'";
-            this.main = "dist/src/index.js";
-            this.types = "dist/src/index.d.ts";
+            this.main = "src/index.js";
+            this.types = "src/index.d.ts";
           '
       - run: npm run build
+      - run: mv package.json dist/
       - run: npm publish --tag dev
+        working-directory: ./dist
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
