@@ -31,4 +31,5 @@ export { Role } from "./rbac/Role";
 export { VolumeSnapshot } from "./snapshot/VolumeSnapshot";
 export { VolumeSnapshotClass } from "./snapshot/VolumeSnapshotClass";
 export { VolumeSnapshotContent } from "./snapshot/VolumeSnapshotContent";
+export { StorageClass } from "./storage/StorageClass";
 export { RoleBinding } from "./rbac/RoleBinding";
