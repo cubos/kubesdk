@@ -28,4 +28,7 @@ export { ServiceAccount } from "./core/ServiceAccount";
 export { ClusterRole } from "./rbac/ClusterRole";
 export { ClusterRoleBinding } from "./rbac/ClusterRoleBinding";
 export { Role } from "./rbac/Role";
+export { VolumeSnapshot } from "./snapshot/VolumeSnapshot";
+export { VolumeSnapshotClass } from "./snapshot/VolumeSnapshotClass";
+export { VolumeSnapshotContent } from "./snapshot/VolumeSnapshotContent";
 export { RoleBinding } from "./rbac/RoleBinding";
