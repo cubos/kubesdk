@@ -1,7 +1,8 @@
 import { randomBytes } from "crypto";
 
 import "jest-extended";
-import { Controller, KubernetesError, Namespace, ServiceAccount } from "../../src";
+import { Controller, CronJob, KubernetesError, Namespace, ServiceAccount } from "../../src";
+import { sleep } from "../../src/utils";
 
 describe("Controller", () => {
   const namespace = randomBytes(8).toString("hex");
@@ -57,15 +58,33 @@ describe("Controller", () => {
     const name = randomBytes(8).toString("hex");
     const controller = new Controller(name);
 
-    await controller.install({
-      image: "busybox",
-      namespace,
-    });
+    controller.addCronJob("teste", "* * * * *", async () => {});
+    const cronJobName = `${name}-teste`;
+
+    await expect(CronJob.get(namespace, cronJobName)).rejects.toThrowError(KubernetesError.NotFound);
 
     await controller.install({
       image: "busybox",
       namespace,
     });
+
+    await CronJob.get(namespace, cronJobName);
+
+    await controller.install({
+      image: "busybox",
+      namespace,
+    });
+
+    await CronJob.get(namespace, cronJobName);
+
+    await controller.uninstall({
+      namespace,
+      callback: console.log,
+    });
+
+    await sleep(1000);
+
+    await expect(CronJob.get(namespace, cronJobName)).rejects.toThrowError(KubernetesError.NotFound);
   });
 
   test.concurrent("installs and uninstalls", async () => {
