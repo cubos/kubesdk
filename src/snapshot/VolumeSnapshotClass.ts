@@ -1,5 +1,5 @@
-import type { INamespacedResource } from "../base/Resource";
-import { NamespacedResource, wrapNamespacedResource } from "../base/Resource";
+import type { IResource } from "../base/Resource";
+import { Resource, wrapResource } from "../base/Resource";
 
 export interface VolumeSnapshotClassMetadata {}
 
@@ -11,14 +11,14 @@ export interface VolumeSnapshotClassSpec {
 
 export interface VolumeSnapshotClassStatus {}
 
-export type VolumeSnapshotClass = INamespacedResource<
+export type VolumeSnapshotClass = IResource<
   VolumeSnapshotClassMetadata,
   VolumeSnapshotClassSpec,
   VolumeSnapshotClassStatus
 >;
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export const VolumeSnapshotClass = wrapNamespacedResource<
+export const VolumeSnapshotClass = wrapResource<
   VolumeSnapshotClassMetadata,
   VolumeSnapshotClassSpec,
   VolumeSnapshotClassStatus,
@@ -27,7 +27,7 @@ export const VolumeSnapshotClass = wrapNamespacedResource<
   "snapshot.storage.k8s.io/v1beta1"
 >(
   // eslint-disable-next-line @typescript-eslint/no-shadow
-  class VolumeSnapshotClass extends NamespacedResource<
+  class VolumeSnapshotClass extends Resource<
     VolumeSnapshotClassMetadata,
     VolumeSnapshotClassSpec,
     VolumeSnapshotClassStatus,
