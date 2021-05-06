@@ -61,7 +61,7 @@ export const VolumeSnapshotContent = wrapNamespacedResource<
   > {
     static kind = "VolumeSnapshotContent";
 
-    protected static apiPlural = "VolumeSnapshotContents";
+    protected static apiPlural = "volumesnapshotcontents";
 
     static apiVersion = "snapshot.storage.k8s.io/v1beta1";
   },
