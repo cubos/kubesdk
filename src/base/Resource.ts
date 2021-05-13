@@ -207,7 +207,9 @@ export class Resource<MetadataT, SpecT, StatusT, KindT extends string, ApiVersio
   }
 
   protected get selfLink(): string {
-    return `/api/v1/${this.base.apiPlural}/${this.metadata.name}`;
+    const base = this.base.apiVersion.includes("/") ? `apis` : "api";
+
+    return `/${base}/${this.base.apiVersion}/${this.base.apiPlural}/${this.metadata.name}`;
   }
 
   private get base(): typeof Resource &
@@ -329,7 +331,9 @@ export class NamespacedResource<
   }
 
   protected get selfLink(): string {
-    return `/api/v1/namespaces/${this.metadata.namespace}/${this.nsbase.apiPlural}/${this.metadata.name}`;
+    const base = this.nsbase.apiVersion.includes("/") ? `apis` : "api";
+
+    return `/${base}/${this.nsbase.apiVersion}/namespaces/${this.metadata.namespace}/${this.nsbase.apiPlural}/${this.metadata.name}`;
   }
 
   async *watch() {
