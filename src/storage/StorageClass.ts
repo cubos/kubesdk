@@ -29,7 +29,7 @@ export const StorageClass = wrapResource<
   StorageClassStatus,
   StorageClass,
   "StorageClass",
-  "io.k8s.api.storage/v1"
+  "storage.k8s.io/v1"
 >(
   // eslint-disable-next-line @typescript-eslint/no-shadow
   class StorageClass extends Resource<
@@ -37,13 +37,13 @@ export const StorageClass = wrapResource<
     StorageClassSpec,
     StorageClassStatus,
     "StorageClass",
-    "io.k8s.api.storage/v1"
+    "storage.k8s.io/v1"
   > {
     static kind = "StorageClass";
 
     protected static apiPlural = "storageclasses";
 
-    static apiVersion = "io.k8s.api.storage/v1";
+    static apiVersion = "storage.k8s.io/v1";
 
     protected static hasInlineSpec = true;
   },
