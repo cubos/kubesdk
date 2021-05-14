@@ -17,7 +17,7 @@ describe("Pod", () => {
     await Namespace.delete(namespace);
   });
 
-  test.concurrent("exec", async () => {
+  test("exec", async () => {
     const pod = await Pod.apply(
       {
         name: "exec-target",

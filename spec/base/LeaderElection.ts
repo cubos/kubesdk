@@ -17,7 +17,7 @@ describe("LeaderElection", () => {
     await Namespace.delete(namespace);
   });
 
-  test.concurrent("becomes a leader quickly", async () => {
+  test("becomes a leader quickly", async () => {
     const electionId = randomBytes(8).toString("hex");
 
     const election = new LeaderElection(electionId, { namespace });
@@ -25,7 +25,7 @@ describe("LeaderElection", () => {
     expect(await election.ensureLeader(200)).toBeTrue();
   });
 
-  test.concurrent("holds leadership", async () => {
+  test("holds leadership", async () => {
     const electionId = randomBytes(8).toString("hex");
 
     const election1 = new LeaderElection(electionId, { namespace, ttl: 1000 });

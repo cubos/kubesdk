@@ -17,14 +17,14 @@ describe("Controller", () => {
     await Namespace.delete(namespace);
   });
 
-  test.concurrent("does empty install", async () => {
+  test("does empty install", async () => {
     const name = randomBytes(8).toString("hex");
     const controller = new Controller(name);
 
     expect(await controller.installList(namespace)).toEqual([]);
   });
 
-  test.concurrent("does basic install", async () => {
+  test("does basic install", async () => {
     const name = randomBytes(8).toString("hex");
     const controller = new Controller(name);
 
@@ -54,7 +54,7 @@ describe("Controller", () => {
     expect(cronFn.mock.calls.length).toBe(1);
   });
 
-  test.concurrent("can double install", async () => {
+  test("can double install", async () => {
     const name = randomBytes(8).toString("hex");
     const controller = new Controller(name);
 
@@ -87,7 +87,7 @@ describe("Controller", () => {
     await expect(CronJob.get(namespace, cronJobName)).rejects.toThrowError(KubernetesError.NotFound);
   });
 
-  test.concurrent("installs and uninstalls", async () => {
+  test("installs and uninstalls", async () => {
     const name = randomBytes(8).toString("hex");
     const controller = new Controller(name);
 

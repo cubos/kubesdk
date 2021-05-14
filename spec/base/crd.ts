@@ -17,7 +17,7 @@ describe("CRD", () => {
     await Namespace.delete(namespace);
   });
 
-  test.concurrent("creates basic CRD", async () => {
+  test("creates basic CRD", async () => {
     const name = randomBytes(8).toString("hex");
     const controller = new Controller(name);
 
