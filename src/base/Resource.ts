@@ -4,6 +4,7 @@ import * as QueryString from "querystring";
 import type { LabelSelector } from "../core/types";
 import { has, sleep, throwError } from "../utils";
 import { ClusterConnection } from "./ClusterConnection";
+import { KubernetesError } from "./KubernetesError";
 import { ResourceListWatch } from "./ResourceListWatch";
 import { ResourceWatch } from "./ResourceWatch";
 
@@ -642,8 +643,21 @@ function implementStaticMethods(
 
     // Kubernetes responds the POST request before the resource is really accessible with a GET.
     // An use could create and then access and receive a NotFound error. This sleep prevents that.
-    // TODO: Find a better way to do that without this sleep.
-    await sleep(100);
+    const copy = parseRawObject(conn, raw);
+
+    for (let i = 0; i < 10; ++i) {
+      try {
+        await copy.reload();
+      } catch (e) {
+        if (e instanceof KubernetesError.NotFound) {
+          continue;
+        }
+
+        break;
+      }
+
+      await sleep(80);
+    }
 
     return parseRawObject(conn, raw);
   };
