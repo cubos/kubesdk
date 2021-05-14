@@ -643,7 +643,7 @@ function implementStaticMethods(
     // Kubernetes responds the POST request before the resource is really accessible with a GET.
     // An use could create and then access and receive a NotFound error. This sleep prevents that.
     // TODO: Find a better way to do that without this sleep.
-    await sleep(50);
+    await sleep(100);
 
     return parseRawObject(conn, raw);
   };
