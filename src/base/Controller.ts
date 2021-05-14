@@ -72,7 +72,7 @@ export class Controller {
 
   addCrd(crd: CustomResourceController<string, string, "Cluster" | "Namespaced">) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const { config } = (crd as unknown) as { config: CustomResourceControllerConfig };
+    const { config } = crd as unknown as { config: CustomResourceControllerConfig };
 
     this.crds.push(config);
     this.clusterPolicyRules.push({
@@ -136,9 +136,9 @@ export class Controller {
 
           const targetListSet = new Set(targetList.map(x => JSON.stringify(x)));
 
-          toRemoveAfterInstall = (JSON.parse(
-            controllerConfig.spec.data.installedResources ?? "[]",
-          ) as InstalledResource[]).filter(x => !targetListSet.has(JSON.stringify(x)));
+          toRemoveAfterInstall = (
+            JSON.parse(controllerConfig.spec.data.installedResources ?? "[]") as InstalledResource[]
+          ).filter(x => !targetListSet.has(JSON.stringify(x)));
 
           const newList = [...new Set([...targetList, ...toRemoveAfterInstall].map(x => JSON.stringify(x)))].map(
             x => JSON.parse(x) as InstalledResource,

@@ -31,7 +31,7 @@ export class CustomResourceControllerConfig {
 export class CustomResourceController<
   KindT extends string,
   GroupNameT extends string,
-  Scope extends "Cluster" | "Namespaced"
+  Scope extends "Cluster" | "Namespaced",
 > {
   private config: CustomResourceControllerConfig;
 
@@ -125,7 +125,7 @@ export class CustomResourceController<
 
   addConversion<
     SourceClassT extends { apiVersion: string; new (...args: any[]): any },
-    TargetClassT extends { apiVersion: string; new (...args: any[]): any }
+    TargetClassT extends { apiVersion: string; new (...args: any[]): any },
   >(
     sourceClass: SourceClassT,
     targetClass: TargetClassT,

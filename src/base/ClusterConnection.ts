@@ -370,13 +370,13 @@ export class ClusterConnection {
           }
 
           try {
-            rethrowError(({
+            rethrowError({
               response: {
                 headers: res.headers,
                 status: res.statusCode ?? 500,
                 data: parsed,
               },
-            } as unknown) as AxiosError);
+            } as unknown as AxiosError);
           } catch (e) {
             reject(e);
           }

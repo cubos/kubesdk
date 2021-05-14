@@ -14,7 +14,8 @@ type WatchEvent<T extends IResource<unknown, unknown, unknown>> =
   | { type: "DELETED"; object: T };
 
 export class ResourceListWatch<T extends IResource<unknown, unknown, unknown>>
-  implements AsyncGenerator<WatchEvent<T>, undefined> {
+  implements AsyncGenerator<WatchEvent<T>, undefined>
+{
   private knownList = new Map<string, T>();
 
   private eventBuffer: Array<WatchEvent<T>> = [];
