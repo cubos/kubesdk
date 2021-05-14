@@ -641,17 +641,17 @@ function implementStaticMethods(
       ...(hasInlineSpec ? (spec as any) ?? {} : { spec: spec ?? {} }),
     });
 
-    // Kubernetes responds the POST request before the resource is really accessible with a GET.
-    // An use could create and then access and receive a NotFound error. This sleep prevents that.
+    // Kubernetes responds the POST request before the resource is actually accessible with a GET.
+    // An user could create and then try to get and end up receiving a NotFound error.
     const copy = parseRawObject(conn, raw);
 
-    for (let i = 0; i < 10; ++i) {
+    for (let i = 0; i < 20; ++i) {
       try {
         await copy.reload();
         break;
       } catch (e) {
         if (e instanceof KubernetesError.NotFound) {
-          await sleep(80);
+          await sleep(100);
           continue;
         }
 
