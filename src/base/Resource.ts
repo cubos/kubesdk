@@ -648,15 +648,15 @@ function implementStaticMethods(
     for (let i = 0; i < 10; ++i) {
       try {
         await copy.reload();
+        break;
       } catch (e) {
         if (e instanceof KubernetesError.NotFound) {
+          await sleep(80);
           continue;
         }
 
         break;
       }
-
-      await sleep(80);
     }
 
     return parseRawObject(conn, raw);
