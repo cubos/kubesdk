@@ -57,7 +57,7 @@ describe("Namespace", () => {
     });
 
     expect(modified.metadata.resourceVersion).not.toBe(original.metadata.resourceVersion);
-    expect(modified.metadata.labels).toEqual({ foo: name });
+    expect(modified.metadata.labels).toMatchObject({ foo: name });
     expect(await Namespace.get(name)).toStrictEqual(modified);
     expect(await Namespace.list()).toContainEqual(modified);
     expect(await Namespace.list()).not.toContainEqual(original);
