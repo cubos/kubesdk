@@ -32,7 +32,7 @@
     "command-line-args": "^5.1.1",
     "command-line-usage": "^6.1.1",
     "js-yaml": "^4.1.0",
-    "ws": "^7.5.3"
+    "ws": "^8.0.0"
   },
   "devDependencies": {
     "@cubos/eslint-config": "^1.0.536820",
