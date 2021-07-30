@@ -11,19 +11,18 @@
     "build": "tsc"
   },
   "keywords": [],
-  "author": "Guilherme Bernal <guilherme@cubos.io>",
   "license": "ISC",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/lbguilherme/kubesdk.git"
+    "url": "git+https://github.com/cubos/kubesdk.git"
   },
   "bugs": {
-    "url": "https://github.com/lbguilherme/kubesdk/issues"
+    "url": "https://github.com/cubos/kubesdk/issues"
   },
   "publishConfig": {
     "access": "public"
   },
-  "homepage": "https://github.com/lbguilherme/kubesdk#readme",
+  "homepage": "https://github.com/cubos/kubesdk#readme",
   "dependencies": {
     "ajv": "^8.6.1",
     "axios": "^0.21.1",

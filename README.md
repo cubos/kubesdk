@@ -1,4 +1,4 @@
-[![test status badge](https://github.com/lbguilherme/kubesdk/workflows/spec/badge.svg?branch=master)](https://github.com/lbguilherme/kubesdk/actions)
+[![test status badge](https://github.com/cubos/kubesdk/workflows/spec/badge.svg?branch=master)](https://github.com/cubos/kubesdk/actions)
 
 This library is a high-level strongly typed client for the Kubernetes API for dynamically managing objects. It also serves as an Operator runtime (see below).
 
