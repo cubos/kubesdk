@@ -28,15 +28,15 @@ describe("LeaderElection", () => {
   test("holds leadership", async () => {
     const electionId = randomBytes(8).toString("hex");
 
-    const election1 = new LeaderElection(electionId, { namespace, ttl: 1000 });
-    const election2 = new LeaderElection(electionId, { namespace, ttl: 1000 });
+    const election1 = new LeaderElection(electionId, { namespace, ttl: 2000 });
+    const election2 = new LeaderElection(electionId, { namespace, ttl: 2000 });
 
     for (let i = 0; i < 2; ++i) {
       await election1.ensureLeader();
-      expect(await election2.ensureLeader(300)).toBeFalse();
+      expect(await election2.ensureLeader(1000)).toBeFalse();
     }
 
-    expect(await election2.ensureLeader(2000)).toBeTrue();
-    expect(await election1.ensureLeader(300)).toBeFalse();
+    expect(await election2.ensureLeader(4000)).toBeTrue();
+    expect(await election1.ensureLeader(1000)).toBeFalse();
   });
 });
