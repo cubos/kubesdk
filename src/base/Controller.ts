@@ -482,4 +482,268 @@ export class Controller {
         throw "never";
     }
   }
+
+  async export({
+    namespace,
+    image,
+    imagePullSecret,
+    helm,
+  }: {
+    namespace: string;
+    image: string;
+    imagePullSecret?: string;
+    helm?: boolean;
+  }) {
+    const targetList = await this.installList(namespace);
+
+    const resources = [
+      ConfigMap.export(
+        {
+          name: this.name,
+          namespace,
+        },
+        {
+          data: {
+            installedResources: JSON.stringify(targetList),
+          },
+        },
+      ),
+    ];
+
+    if (this.policyRules.length > 0 || this.clusterPolicyRules.length > 0) {
+      resources.push(
+        ServiceAccount.export({
+          name: this.name,
+          namespace,
+        }),
+      );
+    }
+
+    if (this.policyRules.length > 0) {
+      resources.push(
+        Role.export(
+          {
+            name: this.name,
+            namespace,
+          },
+          {
+            rules: this.policyRules,
+          },
+        ),
+
+        RoleBinding.export(
+          {
+            name: this.name,
+            namespace,
+          },
+          {
+            roleRef: {
+              apiGroup: "rbac.authorization.k8s.io",
+              kind: "Role",
+              name: this.name,
+            },
+            subjects: [
+              {
+                kind: "ServiceAccount",
+                name: this.name,
+                namespace,
+              },
+            ],
+          },
+        ),
+      );
+    }
+
+    if (this.clusterPolicyRules.length > 0) {
+      resources.push(
+        ClusterRole.export(
+          {
+            name: `${this.name}-${namespace}`,
+          },
+          {
+            rules: this.clusterPolicyRules,
+          },
+        ),
+
+        ClusterRoleBinding.export(
+          {
+            name: `${this.name}-${namespace}`,
+          },
+          {
+            roleRef: {
+              apiGroup: "rbac.authorization.k8s.io",
+              kind: "ClusterRole",
+              name: `${this.name}-${namespace}`,
+            },
+            subjects: [
+              {
+                kind: "ServiceAccount",
+                name: this.name,
+                namespace,
+              },
+            ],
+          },
+        ),
+      );
+    }
+
+    for (const secretEnv of this.secretEnvs) {
+      resources.push(
+        Secret.export(
+          {
+            name: `${this.name}-${secretEnv.name}`,
+            namespace,
+          },
+          {
+            data: {},
+            stringData: helm
+              ? Object.keys(secretEnv.values).reduce<any>((acc, cur) => {
+                  acc[cur] = `{{ .Values.secrets.${secretEnv.name}.${cur} | default ${JSON.stringify(
+                    secretEnv.values[cur],
+                  )} }}`;
+                  return acc;
+                }, {})
+              : secretEnv.values,
+          },
+        ),
+      );
+    }
+
+    for (const cronJob of this.cronJobs) {
+      resources.push(
+        CronJob.export(
+          {
+            name: `${this.name}-${cronJob.name}`,
+            namespace,
+          },
+          {
+            schedule: cronJob.schedule,
+            jobTemplate: {
+              spec: {
+                template: {
+                  spec: {
+                    ...(imagePullSecret
+                      ? {
+                          imagePullSecrets: [{ name: imagePullSecret }],
+                        }
+                      : {}),
+                    containers: [
+                      {
+                        name: cronJob.name,
+                        image,
+                        args: ["run", "cronjob", cronJob.name],
+                        envFrom: this.secretEnvs.map(secretEnv => ({
+                          secretRef: { name: `${this.name}-${secretEnv.name}` },
+                        })),
+                      },
+                    ],
+                    ...(this.policyRules.length > 0 || this.clusterPolicyRules.length > 0
+                      ? { serviceAccountName: this.name }
+                      : {}),
+                    restartPolicy: "Never",
+                  },
+                },
+              },
+            },
+          },
+        ),
+      );
+    }
+
+    let needsControllerService = false;
+
+    for (const crd of this.crds) {
+      if (crd.conversions.size > 0) {
+        needsControllerService = true;
+      }
+
+      resources.push(
+        CustomResourceDefinition.export(
+          {
+            name: `${crd.spec.names.plural}.${crd.spec.group}`,
+          },
+          {
+            ...crd.spec,
+            conversion: {
+              strategy: "Webhook",
+              webhook: {
+                clientConfig: {
+                  service: {
+                    name: this.name,
+                    namespace,
+                  },
+                },
+                conversionReviewVersions: ["v1", "v1beta1"],
+              },
+            },
+          },
+        ),
+      );
+    }
+
+    if (needsControllerService) {
+      resources.push(
+        Deployment.export(
+          {
+            name: this.name,
+            namespace,
+          },
+          {
+            selector: {
+              matchLabels: {
+                controller: this.name,
+              },
+            },
+            template: {
+              metadata: {
+                labels: {
+                  controller: this.name,
+                },
+              },
+              spec: {
+                ...(imagePullSecret
+                  ? {
+                      imagePullSecrets: [{ name: imagePullSecret }],
+                    }
+                  : {}),
+                containers: [
+                  {
+                    name: this.name,
+                    image,
+                    args: ["run", "controller"],
+                    envFrom: this.secretEnvs.map(secretEnv => ({
+                      secretRef: { name: `${this.name}-${secretEnv.name}` },
+                    })),
+                  },
+                ],
+                ...(this.policyRules.length > 0 || this.clusterPolicyRules.length > 0
+                  ? { serviceAccountName: this.name }
+                  : {}),
+                restartPolicy: "Never",
+              },
+            },
+          },
+        ),
+        Service.export(
+          {
+            name: this.name,
+            namespace,
+          },
+          {
+            ports: [
+              {
+                port: 8443,
+              },
+            ],
+            selector: {
+              controller: this.name,
+            },
+          },
+        ),
+      );
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    return resources;
+  }
 }

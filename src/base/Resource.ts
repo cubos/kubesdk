@@ -147,6 +147,9 @@ export interface StaticResource<
   apply: {} extends SpecT
     ? (metadata: CreatableMetadata & MetadataT, spec?: SpecT) => Promise<T>
     : (metadata: CreatableMetadata & MetadataT, spec: SpecT) => Promise<T>;
+  export: {} extends SpecT
+    ? (metadata: CreatableMetadata & MetadataT, spec?: SpecT) => any
+    : (metadata: CreatableMetadata & MetadataT, spec: SpecT) => any;
 }
 
 export interface StaticNamespacedResource<
@@ -179,6 +182,9 @@ export interface StaticNamespacedResource<
   apply: {} extends SpecT
     ? (metadata: CreatableMetadata & MetadataT & { namespace: string }, spec?: SpecT) => Promise<T>
     : (metadata: CreatableMetadata & MetadataT & { namespace: string }, spec: SpecT) => Promise<T>;
+  export: {} extends SpecT
+    ? (metadata: CreatableMetadata & MetadataT & { namespace: string }, spec?: SpecT) => any
+    : (metadata: CreatableMetadata & MetadataT & { namespace: string }, spec: SpecT) => any;
 }
 export class Resource<MetadataT, SpecT, StatusT, KindT extends string, ApiVersionT extends string>
   implements IResource<MetadataT, SpecT, StatusT>
@@ -692,6 +698,16 @@ function implementStaticMethods(
 
       return parseRawObject(conn, raw);
     };
+
+  klass.export = (metadata: CreatableMetadata & { namespace?: string }, spec: unknown) => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    return {
+      apiVersion,
+      kind,
+      metadata,
+      ...(hasInlineSpec ? (spec as any) ?? {} : { spec: spec ?? {} }),
+    };
+  };
 }
 
 export function wrapResource<

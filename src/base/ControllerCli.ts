@@ -1,8 +1,21 @@
+import fs from "fs";
+import path from "path";
+import util from "util";
+
 import commandLineArgs from "command-line-args";
 import commandLineUsage from "command-line-usage";
+import jsyaml from "js-yaml";
+import mkdirp from "mkdirp";
+import Rimraf from "rimraf";
+import slugify from "slugify";
+import { tar } from "zip-a-folder";
 
 import { ClusterConnection } from "./ClusterConnection";
 import type { Controller } from "./Controller";
+
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+
+const rimraf = util.promisify(Rimraf);
 
 export class ControllerCli {
   constructor(private controller: Controller) {}
@@ -18,7 +31,7 @@ export class ControllerCli {
             header: "Usage",
           },
           {
-            content: `Allowed commands are 'install', 'uninstall' or 'run'.\nSee \`<command> -h\` for details.`,
+            content: `Allowed commands are 'install', 'uninstall', 'run' or 'chart'.\nSee \`<command> -h\` for details.`,
             header: "Commands",
           },
           {
@@ -48,6 +61,9 @@ export class ControllerCli {
           break;
         case "run":
           await this.cliRun(args);
+          break;
+        case "chart":
+          await this.cliChart(args);
           break;
         default:
           showHelp();
@@ -207,5 +223,91 @@ export class ControllerCli {
           showHelp();
       }
     });
+  }
+
+  private async cliChart(argv: string[]) {
+    const optionDefinitions = [{ alias: "h", description: "Display this usage guide.", name: "help", type: Boolean }];
+    const options = commandLineArgs(optionDefinitions, { stopAtFirstUnknown: true, argv });
+
+    function showHelp() {
+      console.log(
+        commandLineUsage([
+          {
+            content: "chart <path to Chart.yaml>",
+            header: "Usage",
+          },
+          {
+            content: "Exports a Helm Chart for this controller.",
+            header: "Description",
+          },
+          {
+            header: "Options",
+            optionList: optionDefinitions,
+          },
+        ]),
+      );
+    }
+
+    const args = options._unknown ?? [];
+
+    if (options.help || args.length === 0) {
+      showHelp();
+      return;
+    }
+
+    if (!fs.existsSync(args[0])) {
+      throw new Error(`Chart.yaml not found: ${args[0]}`);
+    }
+
+    const parsedChartYaml: any = jsyaml.load(await fs.promises.readFile(args[0], "utf8"));
+
+    if (!parsedChartYaml || !parsedChartYaml.name || !parsedChartYaml.version) {
+      throw new Error(`Invalid Chart.yaml`);
+    }
+
+    const resources = await this.controller.export({
+      image: "{{ .Values.image }}",
+      namespace: "{{ .Release.Namespace }}",
+      helm: true,
+    });
+
+    const helmChartDir = path.join(__dirname, "._helmChartWd");
+
+    // Cleanup and create the directory
+    await rimraf(helmChartDir);
+    await mkdirp(path.join(helmChartDir, "templates"));
+
+    for (const resource of resources) {
+      console.log(`${resource.kind} ${resource.metadata.name}`);
+
+      await fs.promises.writeFile(
+        path.join(helmChartDir, "templates", `${slugify(`${resource.kind}-${resource.metadata.name}`)}.yaml`),
+        // eslint-disable-next-line require-unicode-regexp
+        jsyaml.dump(resource).replace(/'(?<rawValue>{{ .+ }})'$/gm, (_, rawValue: string) => rawValue),
+      );
+    }
+
+    await fs.promises.copyFile(args[0], path.join(helmChartDir, "Chart.yaml"));
+    await fs.promises.writeFile(
+      path.join(helmChartDir, "values.yaml"),
+      jsyaml.dump({
+        image: "",
+        secrets: resources
+          .filter(r => r.kind === "Secret")
+          .reduce<any>((acc, cur) => {
+            acc[cur.metadata.name] = Object.keys(cur.stringData).reduce<any>((acc, cur) => {
+              acc[cur] = "";
+              return acc;
+            }, {});
+
+            return acc;
+          }, {}),
+      }),
+    );
+
+    console.log(await fs.promises.readFile(path.join(helmChartDir, "values.yaml"), "utf8"));
+
+    await tar(helmChartDir, `${parsedChartYaml.name}-${parsedChartYaml.version}.tgz`);
+    await rimraf(helmChartDir);
   }
 }
