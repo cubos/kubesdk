@@ -37,7 +37,7 @@
     "@cubos/eslint-config": "^1.0.536820",
     "@types/command-line-args": "^5.0.1",
     "@types/command-line-usage": "^5.0.2",
-    "@types/jest": "^26.0.24",
+    "@types/jest": "^27.0.0",
     "@types/js-yaml": "^4.0.2",
     "@types/json-schema": "^7.0.8",
     "@types/node": "^16.3.1",
