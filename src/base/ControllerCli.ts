@@ -311,7 +311,7 @@ export class ControllerCli {
       }),
     );
 
-    console.log(await fs.readFile(path.join(helmChartDir, "values.yaml"), "utf8"));
+    console.log("\nvalues.yaml:\n", await fs.readFile(path.join(helmChartDir, "values.yaml"), "utf8"));
 
     await tar(baseHelmChartWorkingDir, `${parsedChartYaml.name}-${parsedChartYaml.version}.tgz`);
     await rimraf(baseHelmChartWorkingDir);
