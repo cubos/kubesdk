@@ -271,7 +271,7 @@ export class ControllerCli {
       helm: true,
     });
 
-    const helmChartDir = path.join(__dirname, "._helmChartWd");
+    const helmChartDir = path.join(__dirname, "._helmChartWd", parsedChartYaml.name);
 
     // Cleanup and create the directory
     await rimraf(helmChartDir);
