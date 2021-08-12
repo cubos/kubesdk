@@ -1,3 +1,4 @@
+import { randomBytes } from "crypto";
 import fs from "fs";
 import path from "path";
 import util from "util";
@@ -271,10 +272,11 @@ export class ControllerCli {
       helm: true,
     });
 
-    const helmChartDir = path.join(__dirname, "._helmChartWd", parsedChartYaml.name);
+    const baseHelmChartWorkingDir = path.join(__dirname, `._helmChartWd-${randomBytes(4).toString("hex")}`);
+    const helmChartDir = path.join(baseHelmChartWorkingDir, parsedChartYaml.name);
 
     // Cleanup and create the directory
-    await rimraf(helmChartDir);
+    await rimraf(baseHelmChartWorkingDir);
     await mkdirp(path.join(helmChartDir, "templates"));
 
     for (const resource of resources) {
@@ -295,9 +297,9 @@ export class ControllerCli {
         secrets: resources
           .filter(r => r.kind === "Secret")
           .reduce<any>((acc, cur) => {
-            acc[cur.metadata.name] = Object.keys(cur.stringData).reduce<any>((acc, cur) => {
-              acc[cur] = "";
-              return acc;
+            acc[cur.metadata.name] = Object.keys(cur.stringData).reduce<any>((acc2, cur2) => {
+              acc2[cur2] = "";
+              return acc2;
             }, {});
 
             return acc;
@@ -307,7 +309,7 @@ export class ControllerCli {
 
     console.log(await fs.promises.readFile(path.join(helmChartDir, "values.yaml"), "utf8"));
 
-    await tar(helmChartDir, `${parsedChartYaml.name}-${parsedChartYaml.version}.tgz`);
-    await rimraf(helmChartDir);
+    await tar(baseHelmChartWorkingDir, `${parsedChartYaml.name}-${parsedChartYaml.version}.tgz`);
+    await rimraf(baseHelmChartWorkingDir);
   }
 }
