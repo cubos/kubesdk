@@ -289,11 +289,15 @@ export class ControllerCli {
       );
     }
 
+    if (!process.env.KUBESDK_CHART_IMAGE) {
+      console.warn("⚠️ KUBESDK_CHART_IMAGE was not set. You must set image manually in values.yaml");
+    }
+
     await fs.promises.copyFile(args[0], path.join(helmChartDir, "Chart.yaml"));
     await fs.promises.writeFile(
       path.join(helmChartDir, "values.yaml"),
       jsyaml.dump({
-        image: "",
+        image: process.env.KUBESDK_CHART_IMAGE,
         secrets: resources
           .filter(r => r.kind === "Secret")
           .reduce<any>((acc, cur) => {
