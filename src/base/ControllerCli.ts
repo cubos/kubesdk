@@ -1,5 +1,5 @@
 import { randomBytes } from "crypto";
-import fs from "fs";
+import { existsSync, promises as fs } from "fs";
 import path from "path";
 import util from "util";
 
@@ -256,11 +256,11 @@ export class ControllerCli {
       return;
     }
 
-    if (!fs.existsSync(args[0])) {
+    if (!existsSync(args[0])) {
       throw new Error(`Chart.yaml not found: ${args[0]}`);
     }
 
-    const parsedChartYaml: any = jsyaml.load(await fs.promises.readFile(args[0], "utf8"));
+    const parsedChartYaml: any = jsyaml.load(await fs.readFile(args[0], "utf8"));
 
     if (!parsedChartYaml || !parsedChartYaml.name || !parsedChartYaml.version) {
       throw new Error(`Invalid Chart.yaml`);
@@ -282,7 +282,7 @@ export class ControllerCli {
     for (const resource of resources) {
       console.log(`${resource.kind} ${resource.metadata.name}`);
 
-      await fs.promises.writeFile(
+      await fs.writeFile(
         path.join(helmChartDir, "templates", `${slugify(`${resource.kind}-${resource.metadata.name}`)}.yaml`),
         // eslint-disable-next-line require-unicode-regexp
         jsyaml.dump(resource).replace(/'(?<rawValue>{{ .+ }})'$/gm, (_, rawValue: string) => rawValue),
@@ -293,8 +293,8 @@ export class ControllerCli {
       console.warn("⚠️ KUBESDK_CHART_IMAGE was not set. You must set image manually in values.yaml");
     }
 
-    await fs.promises.copyFile(args[0], path.join(helmChartDir, "Chart.yaml"));
-    await fs.promises.writeFile(
+    await fs.copyFile(args[0], path.join(helmChartDir, "Chart.yaml"));
+    await fs.writeFile(
       path.join(helmChartDir, "values.yaml"),
       jsyaml.dump({
         image: process.env.KUBESDK_CHART_IMAGE,
@@ -311,7 +311,7 @@ export class ControllerCli {
       }),
     );
 
-    console.log(await fs.promises.readFile(path.join(helmChartDir, "values.yaml"), "utf8"));
+    console.log(await fs.readFile(path.join(helmChartDir, "values.yaml"), "utf8"));
 
     await tar(baseHelmChartWorkingDir, `${parsedChartYaml.name}-${parsedChartYaml.version}.tgz`);
     await rimraf(baseHelmChartWorkingDir);
