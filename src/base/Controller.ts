@@ -496,19 +496,21 @@ export class Controller {
   }) {
     const targetList = await this.installList(namespace);
 
-    const resources = [
-      ConfigMap.export(
-        {
-          name: this.name,
-          namespace,
-        },
-        {
-          data: {
-            installedResources: JSON.stringify(targetList),
-          },
-        },
-      ),
-    ];
+    const resources = helm
+      ? []
+      : [
+          ConfigMap.export(
+            {
+              name: this.name,
+              namespace,
+            },
+            {
+              data: {
+                installedResources: JSON.stringify(targetList),
+              },
+            },
+          ),
+        ];
 
     if (this.policyRules.length > 0 || this.clusterPolicyRules.length > 0) {
       resources.push(
