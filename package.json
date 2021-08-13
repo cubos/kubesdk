@@ -34,7 +34,7 @@
     "mkdirp": "^1.0.4",
     "rimraf": "^3.0.2",
     "slugify": "^1.6.0",
-    "ws": "^7.5.3",
+    "ws": "^8.1.0",
     "zip-a-folder": "^1.1.0"
   },
   "devDependencies": {
