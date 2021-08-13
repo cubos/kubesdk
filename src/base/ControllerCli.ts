@@ -1,8 +1,22 @@
+import { randomBytes } from "crypto";
+import { existsSync, promises as fs } from "fs";
+import path from "path";
+import util from "util";
+
 import commandLineArgs from "command-line-args";
 import commandLineUsage from "command-line-usage";
+import jsyaml from "js-yaml";
+import mkdirp from "mkdirp";
+import Rimraf from "rimraf";
+import slugify from "slugify";
+import { tar } from "zip-a-folder";
 
 import { ClusterConnection } from "./ClusterConnection";
 import type { Controller } from "./Controller";
+
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+
+const rimraf = util.promisify(Rimraf);
 
 export class ControllerCli {
   constructor(private controller: Controller) {}
@@ -18,7 +32,7 @@ export class ControllerCli {
             header: "Usage",
           },
           {
-            content: `Allowed commands are 'install', 'uninstall' or 'run'.\nSee \`<command> -h\` for details.`,
+            content: `Allowed commands are 'install', 'uninstall', 'run' or 'chart'.\nSee \`<command> -h\` for details.`,
             header: "Commands",
           },
           {
@@ -48,6 +62,9 @@ export class ControllerCli {
           break;
         case "run":
           await this.cliRun(args);
+          break;
+        case "chart":
+          await this.cliChart(args);
           break;
         default:
           showHelp();
@@ -207,5 +224,113 @@ export class ControllerCli {
           showHelp();
       }
     });
+  }
+
+  private async cliChart(argv: string[]) {
+    const optionDefinitions = [
+      { alias: "h", description: "Display this usage guide.", name: "help", type: Boolean },
+      {
+        alias: "c",
+        description: "Path to Chart.yaml",
+        name: "chart",
+        type: String,
+        defaultOption: true,
+      },
+      {
+        alias: "i",
+        description: "Set controller image on values.yaml. Example: registry.gitlab.com/group/project:v123",
+        name: "image",
+        type: String,
+      },
+    ];
+
+    const options = commandLineArgs(optionDefinitions, { argv });
+
+    function showHelp() {
+      console.log(
+        commandLineUsage([
+          {
+            content: "chart <path to Chart.yaml> --image <controller image url>",
+            header: "Usage",
+          },
+          {
+            content: "Exports a Helm Chart for this controller.",
+            header: "Description",
+          },
+          {
+            header: "Options",
+            optionList: optionDefinitions,
+          },
+        ]),
+      );
+    }
+
+    if (options.help || !options.chart) {
+      showHelp();
+      return;
+    }
+
+    if (!existsSync(options.chart)) {
+      throw new Error(`Chart.yaml not found: ${options.chart}`);
+    }
+
+    const parsedChartYaml: any = jsyaml.load(await fs.readFile(options.chart, "utf8"));
+
+    if (!parsedChartYaml || !parsedChartYaml.name || !parsedChartYaml.version) {
+      throw new Error(`Invalid Chart.yaml`);
+    }
+
+    const resources = await this.controller.export({
+      image: "{{ .Values.image }}",
+      namespace: "{{ .Release.Namespace }}",
+      helm: true,
+    });
+
+    const baseHelmChartWorkingDir = path.join(__dirname, `._helmChartWd-${randomBytes(4).toString("hex")}`);
+    const helmChartDir = path.join(baseHelmChartWorkingDir, parsedChartYaml.name);
+
+    // Cleanup and create the directory
+    await rimraf(baseHelmChartWorkingDir);
+    await mkdirp(path.join(helmChartDir, "templates"));
+
+    for (const resource of resources) {
+      console.log(`${resource.kind} ${resource.metadata.name}`);
+
+      await fs.writeFile(
+        path.join(helmChartDir, "templates", `${slugify(`${resource.kind}-${resource.metadata.name}`)}.yaml`),
+        // eslint-disable-next-line require-unicode-regexp
+        jsyaml.dump(resource).replace(/'(?<rawValue>{{ .+ }})'$/gm, (_, rawValue: string) => rawValue),
+      );
+    }
+
+    if (!options.image) {
+      console.warn("⚠️ Chart image was not set. You must set image manually in values.yaml");
+    }
+
+    const valuesYaml = jsyaml.dump({
+      image: options.image,
+      secrets: resources
+        .filter(r => r.kind === "Secret")
+        .reduce<any>((acc, cur) => {
+          acc[cur.metadata.name] = Object.keys(cur.stringData).reduce<any>((acc2, cur2) => {
+            acc2[cur2] = "";
+            return acc2;
+          }, {});
+
+          return acc;
+        }, {}),
+    });
+
+    await fs.copyFile(options.chart, path.join(helmChartDir, "Chart.yaml"));
+    await fs.writeFile(path.join(helmChartDir, "values.yaml"), valuesYaml);
+
+    console.log(`\nvalues.yaml:\n${valuesYaml.replace(/^/gmu, "  ")}`);
+
+    const outputFileName = `${parsedChartYaml.name}-${parsedChartYaml.version}.tgz`;
+
+    await tar(baseHelmChartWorkingDir, outputFileName);
+    await rimraf(baseHelmChartWorkingDir);
+
+    console.log(`✔️  Chart exported successfully as ${outputFileName}`);
   }
 }
