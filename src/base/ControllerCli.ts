@@ -227,14 +227,30 @@ export class ControllerCli {
   }
 
   private async cliChart(argv: string[]) {
-    const optionDefinitions = [{ alias: "h", description: "Display this usage guide.", name: "help", type: Boolean }];
-    const options = commandLineArgs(optionDefinitions, { stopAtFirstUnknown: true, argv });
+    const optionDefinitions = [
+      { alias: "h", description: "Display this usage guide.", name: "help", type: Boolean },
+      {
+        alias: "c",
+        description: "Path to Chart.yaml",
+        name: "chart",
+        type: String,
+        defaultOption: true,
+      },
+      {
+        alias: "i",
+        description: "Set controller image on values.yaml. Example: registry.gitlab.com/group/project:v123",
+        name: "image",
+        type: String,
+      },
+    ];
+
+    const options = commandLineArgs(optionDefinitions, { argv });
 
     function showHelp() {
       console.log(
         commandLineUsage([
           {
-            content: "chart <path to Chart.yaml>",
+            content: "chart <path to Chart.yaml> --image <controller image url>",
             header: "Usage",
           },
           {
@@ -249,18 +265,16 @@ export class ControllerCli {
       );
     }
 
-    const args = options._unknown ?? [];
-
-    if (options.help || args.length === 0) {
+    if (options.help || !options.chart) {
       showHelp();
       return;
     }
 
-    if (!existsSync(args[0])) {
-      throw new Error(`Chart.yaml not found: ${args[0]}`);
+    if (!existsSync(options.chart)) {
+      throw new Error(`Chart.yaml not found: ${options.chart}`);
     }
 
-    const parsedChartYaml: any = jsyaml.load(await fs.readFile(args[0], "utf8"));
+    const parsedChartYaml: any = jsyaml.load(await fs.readFile(options.chart, "utf8"));
 
     if (!parsedChartYaml || !parsedChartYaml.name || !parsedChartYaml.version) {
       throw new Error(`Invalid Chart.yaml`);
@@ -289,31 +303,34 @@ export class ControllerCli {
       );
     }
 
-    if (!process.env.KUBESDK_CHART_IMAGE) {
-      console.warn("⚠️ KUBESDK_CHART_IMAGE was not set. You must set image manually in values.yaml");
+    if (!options.image) {
+      console.warn("⚠️ Chart image was not set. You must set image manually in values.yaml");
     }
 
-    await fs.copyFile(args[0], path.join(helmChartDir, "Chart.yaml"));
-    await fs.writeFile(
-      path.join(helmChartDir, "values.yaml"),
-      jsyaml.dump({
-        image: process.env.KUBESDK_CHART_IMAGE,
-        secrets: resources
-          .filter(r => r.kind === "Secret")
-          .reduce<any>((acc, cur) => {
-            acc[cur.metadata.name] = Object.keys(cur.stringData).reduce<any>((acc2, cur2) => {
-              acc2[cur2] = "";
-              return acc2;
-            }, {});
+    const valuesYaml = jsyaml.dump({
+      image: options.image,
+      secrets: resources
+        .filter(r => r.kind === "Secret")
+        .reduce<any>((acc, cur) => {
+          acc[cur.metadata.name] = Object.keys(cur.stringData).reduce<any>((acc2, cur2) => {
+            acc2[cur2] = "";
+            return acc2;
+          }, {});
 
-            return acc;
-          }, {}),
-      }),
-    );
+          return acc;
+        }, {}),
+    });
 
-    console.log("\nvalues.yaml:\n", await fs.readFile(path.join(helmChartDir, "values.yaml"), "utf8"));
+    await fs.copyFile(options.chart, path.join(helmChartDir, "Chart.yaml"));
+    await fs.writeFile(path.join(helmChartDir, "values.yaml"), valuesYaml);
 
-    await tar(baseHelmChartWorkingDir, `${parsedChartYaml.name}-${parsedChartYaml.version}.tgz`);
+    console.log(`\nvalues.yaml:\n${valuesYaml.replace(/^/gmu, "  ")}`);
+
+    const outputFileName = `${parsedChartYaml.name}-${parsedChartYaml.version}.tgz`;
+
+    await tar(baseHelmChartWorkingDir, outputFileName);
     await rimraf(baseHelmChartWorkingDir);
+
+    console.log(`✔️  Chart exported successfully as ${outputFileName}`);
   }
 }
