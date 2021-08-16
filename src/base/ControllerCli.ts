@@ -191,7 +191,7 @@ export class ControllerCli {
             header: "Usage",
           },
           {
-            content: "Allowed types are 'cronjob' and 'controller'.",
+            content: "Allowed types are 'cronjob', 'controller', 'deployment' and 'statefulset'.",
             header: "Types",
           },
           {
@@ -215,7 +215,9 @@ export class ControllerCli {
     }).use(async () => {
       switch (args[0]) {
         case "controller":
-        case "cronjob": {
+        case "cronjob":
+        case "deployment":
+        case "statefulset": {
           await this.controller.run(args[0], args[1]);
           break;
         }
