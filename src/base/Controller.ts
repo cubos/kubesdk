@@ -1,5 +1,7 @@
 import { CustomResourceDefinition } from "../apiextensions/CustomResourceDefinition";
+import type { DeploymentSpec } from "../apps/Deployment";
 import { Deployment } from "../apps/Deployment";
+import { StatefulSet } from "../apps/StatefulSet";
 import { CronJob } from "../batch/CronJob";
 import { ConfigMap } from "../core/ConfigMap";
 import { Secret } from "../core/Secret";
@@ -20,6 +22,13 @@ interface ControllerCronJob {
   func(): Promise<void>;
 }
 
+interface ControllerWorkload {
+  type: "Deployment" | "StatefulSet";
+  name: string;
+  replicas?: number;
+  func(): Promise<void>;
+}
+
 const installableKinds = {
   ClusterRole,
   ClusterRoleBinding,
@@ -32,6 +41,7 @@ const installableKinds = {
   Secret,
   Service,
   ServiceAccount,
+  StatefulSet,
 };
 
 interface InstalledResource {
@@ -41,6 +51,8 @@ interface InstalledResource {
 
 export class Controller {
   private cronJobs: ControllerCronJob[] = [];
+
+  private workloads: ControllerWorkload[] = [];
 
   private clusterPolicyRules: PolicyRule[] = [];
 
@@ -56,6 +68,14 @@ export class Controller {
 
   addCronJob(name: string, schedule: string, func: () => Promise<void>) {
     this.cronJobs.push({ name, schedule, func });
+  }
+
+  addDeployment(name: string, replicas: number, func: () => Promise<void>) {
+    this.workloads.push({ type: "Deployment", name, replicas, func });
+  }
+
+  addStatefulSet(name: string, replicas: number, func: () => Promise<void>) {
+    this.workloads.push({ type: "StatefulSet", name, replicas, func });
   }
 
   attachSecretEnv(name: string, values: Record<string, string>) {
@@ -251,6 +271,68 @@ export class Controller {
             stringData: secretEnv.values,
           },
         );
+      }
+    }
+
+    for (const workload of this.workloads) {
+      callback?.(workload.type, `${this.name}-${workload.name}`);
+      if (apply !== false) {
+        const spec: DeploymentSpec = {
+          replicas: workload.replicas,
+          selector: {
+            matchLabels: {
+              app: `${this.name}-${workload.name}`,
+            },
+          },
+          template: {
+            metadata: {
+              labels: {
+                app: `${this.name}-${workload.name}`,
+              },
+            },
+            spec: {
+              ...(imagePullSecret
+                ? {
+                    imagePullSecrets: [{ name: imagePullSecret }],
+                  }
+                : {}),
+              containers: [
+                {
+                  name: workload.name,
+                  image,
+                  args: ["run", workload.type.toLowerCase(), workload.name],
+                  envFrom: this.secretEnvs.map(secretEnv => ({
+                    secretRef: { name: `${this.name}-${secretEnv.name}` },
+                  })),
+                },
+              ],
+              ...(this.policyRules.length > 0 || this.clusterPolicyRules.length > 0
+                ? { serviceAccountName: this.name }
+                : {}),
+            },
+          },
+        };
+
+        if (workload.type === "StatefulSet") {
+          await StatefulSet.apply(
+            {
+              name: `${this.name}-${workload.name}`,
+              namespace,
+            },
+            {
+              ...spec,
+              serviceName: `${this.name}-${workload.name}`,
+            },
+          );
+        } else {
+          await Deployment.apply(
+            {
+              name: `${this.name}-${workload.name}`,
+              namespace,
+            },
+            spec,
+          );
+        }
       }
     }
 
@@ -459,7 +541,7 @@ export class Controller {
     await ConfigMap.delete(namespace, this.name);
   }
 
-  async run(action: "cronjob" | "controller", name?: string) {
+  async run(action: "cronjob" | "controller" | "deployment" | "statefulset", name?: string) {
     switch (action) {
       case "cronjob": {
         const cronJob = this.cronJobs.find(x => x.name === name);
@@ -475,6 +557,18 @@ export class Controller {
       case "controller": {
         // Hang forever
         await new Promise(() => undefined);
+        break;
+      }
+
+      case "deployment":
+      case "statefulset": {
+        const workload = this.workloads.find(x => x.name === name);
+
+        if (!workload) {
+          throw new Error(`Unknown ${action} "${name ?? ""}"`);
+        }
+
+        await workload.func();
         break;
       }
 
@@ -609,6 +703,69 @@ export class Controller {
           },
         ),
       );
+    }
+
+    for (const workload of this.workloads) {
+      const spec: DeploymentSpec = {
+        replicas: workload.replicas,
+        selector: {
+          matchLabels: {
+            app: `${this.name}-${workload.name}`,
+          },
+        },
+        template: {
+          metadata: {
+            labels: {
+              app: `${this.name}-${workload.name}`,
+            },
+          },
+          spec: {
+            ...(imagePullSecret
+              ? {
+                  imagePullSecrets: [{ name: imagePullSecret }],
+                }
+              : {}),
+            containers: [
+              {
+                name: workload.name,
+                image,
+                args: ["run", workload.type.toLowerCase(), workload.name],
+                envFrom: this.secretEnvs.map(secretEnv => ({
+                  secretRef: { name: `${this.name}-${secretEnv.name}` },
+                })),
+              },
+            ],
+            ...(this.policyRules.length > 0 || this.clusterPolicyRules.length > 0
+              ? { serviceAccountName: this.name }
+              : {}),
+          },
+        },
+      };
+
+      if (workload.type === "StatefulSet") {
+        resources.push(
+          StatefulSet.export(
+            {
+              name: `${this.name}-${workload.name}`,
+              namespace,
+            },
+            {
+              ...spec,
+              serviceName: `${this.name}-${workload.name}`,
+            },
+          ),
+        );
+      } else {
+        resources.push(
+          Deployment.export(
+            {
+              name: `${this.name}-${workload.name}`,
+              namespace,
+            },
+            spec,
+          ),
+        );
+      }
     }
 
     for (const cronJob of this.cronJobs) {
