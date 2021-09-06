@@ -38,7 +38,7 @@ export interface NetworkPolicySpec {
     from: NetworkPolicyPeer[];
   }>;
   podSelector: LabelSelector;
-  policyTypes: [] | ["Ingress"] | ["Egress"] | ["Ingress", "Egress"];
+  policyTypes?: [] | ["Ingress"] | ["Egress"] | ["Ingress", "Egress"];
 }
 
 export interface NetworkPolicyStatus {}
