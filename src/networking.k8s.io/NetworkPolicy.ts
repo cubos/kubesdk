@@ -67,7 +67,5 @@ export const NetworkPolicy = wrapNamespacedResource<
     protected static apiPlural = "networkpolicies";
 
     static apiVersion = "networking.k8s.io/v1";
-
-    protected static hasInlineSpec = true;
   },
 );
