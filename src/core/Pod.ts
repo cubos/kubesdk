@@ -255,12 +255,19 @@ export type Volume = {
   | {
       downwardAPI: {
         defaultMode?: number;
-        items?: Array<{
-          fieldRef: ObjectFieldSelector;
-          mode: number;
-          path: string;
-          resourceFieldRef: ResourceFieldSelector;
-        }>;
+        items?: Array<
+          {
+            mode?: number;
+            path: string;
+          } & (
+            | {
+                fieldRef: ObjectFieldSelector;
+              }
+            | {
+                resourceFieldRef: ResourceFieldSelector;
+              }
+          )
+        >;
       };
     }
   | {
@@ -330,11 +337,16 @@ export type Volume = {
             }
           | {
               downwardAPI: {
-                fieldRef: ObjectFieldSelector;
                 mode?: number;
                 path: string;
-                resourceFieldRef: ResourceFieldSelector;
-              };
+              } & (
+                | {
+                    fieldRef: ObjectFieldSelector;
+                  }
+                | {
+                    resourceFieldRef: ResourceFieldSelector;
+                  }
+              );
             }
           | {
               secret: {
