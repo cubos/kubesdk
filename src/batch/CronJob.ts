@@ -46,7 +46,7 @@ export const CronJob = wrapNamespacedResource<
 
     protected static apiPlural = "cronjobs";
 
-    static apiVersion = "batch/v1beta1";
+    static apiVersion = "batch/v1";
 
     async trigger() {
       return Job.apply(
@@ -55,7 +55,7 @@ export const CronJob = wrapNamespacedResource<
           namespace: this.metadata.namespace,
           ownerReferences: [
             {
-              apiVersion: "batch/v1beta1",
+              apiVersion: "batch/v1",
               kind: "CronJob",
               name: this.metadata.name,
               uid: this.metadata.uid,
