@@ -30,11 +30,11 @@ type NetworkPolicyPeer =
 
 export interface NetworkPolicySpec {
   egress?: Array<{
-    ports: NetworkPolicyPort[];
+    ports?: NetworkPolicyPort[];
     to: NetworkPolicyPeer[];
   }>;
   ingress?: Array<{
-    ports: NetworkPolicyPort[];
+    ports?: NetworkPolicyPort[];
     from: NetworkPolicyPeer[];
   }>;
   podSelector: LabelSelector;
