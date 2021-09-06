@@ -5,7 +5,7 @@ import type { JSONSchema4 } from "json-schema";
 import type {
   CustomResourceDefinitionNames,
   CustomResourceDefinitionSpec,
-} from "../apiextensions/CustomResourceDefinition";
+} from "../apiextensions.k8s.io/CustomResourceDefinition";
 import type { DeepReadonly, DeepUnReadonly } from "../utils";
 import type { INamespacedResource, IResource } from "./Resource";
 import { NamespacedResource, Resource, wrapNamespacedResource, wrapResource } from "./Resource";
