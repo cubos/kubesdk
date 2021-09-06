@@ -33,3 +33,4 @@ export { VolumeSnapshotClass } from "./snapshot.storage.k8s.io/VolumeSnapshotCla
 export { VolumeSnapshotContent } from "./snapshot.storage.k8s.io/VolumeSnapshotContent";
 export { StorageClass } from "./storage.k8s.io/StorageClass";
 export { RoleBinding } from "./rbac.authorization.k8s.io/RoleBinding";
+export { NetworkPolicy } from "./networking.k8s.io/NetworkPolicy";
