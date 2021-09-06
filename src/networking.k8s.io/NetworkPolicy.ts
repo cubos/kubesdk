@@ -37,7 +37,7 @@ export interface NetworkPolicySpec {
     ports: NetworkPolicyPort[];
     from: NetworkPolicyPeer[];
   }>;
-  porSelector: LabelSelector;
+  podSelector: LabelSelector;
   policyTypes: [] | ["Ingress"] | ["Egress"] | ["Ingress", "Egress"];
 }
 
