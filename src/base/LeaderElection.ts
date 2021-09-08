@@ -21,11 +21,7 @@ export class LeaderElection {
     this.namespace = namespace ?? ClusterConnection.current().namespace;
   }
 
-  async ensureLeader(): Promise<undefined>;
-
-  async ensureLeader(timeout: number): Promise<boolean>;
-
-  async ensureLeader(timeout?: number): Promise<boolean | undefined> {
+  async ensureLeader(timeout?: number): Promise<boolean> {
     const start = new Date();
 
     for (;;) {
@@ -69,7 +65,7 @@ export class LeaderElection {
         }
 
         if (timeout === undefined) {
-          return undefined;
+          return false;
         }
 
         const maxSleep = timeout - (new Date().getTime() - start.getTime());
@@ -81,7 +77,7 @@ export class LeaderElection {
         }
 
         if (timeout === undefined) {
-          return undefined;
+          return false;
         }
 
         const maxSleep = timeout - (new Date().getTime() - start.getTime());
