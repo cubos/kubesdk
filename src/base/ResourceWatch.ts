@@ -24,6 +24,8 @@ export class ResourceWatch<T extends IResource<unknown, unknown, unknown>>
 
   private streamIterator: AsyncIterator<InternalWatchEvent<T>, undefined> | undefined;
 
+  private errorCount = 0;
+
   constructor(
     private conn: ClusterConnection,
     private url: string,
@@ -49,15 +51,22 @@ export class ResourceWatch<T extends IResource<unknown, unknown, unknown>>
     try {
       result = await this.streamIterator.next();
     } catch (err) {
+      if (this.errorCount > 3) {
+        throw err;
+      }
+
       this.stream.destroy();
       this.stream = undefined;
       this.streamIterator = undefined;
+      this.errorCount++;
       return this.next();
     }
 
+    this.errorCount = 0;
+
     if (result.done === true) {
       this.close();
-      return { done: result.done, value: undefined };
+      return { done: true, value: undefined };
     }
 
     if (result.value.type === "ERROR") {
