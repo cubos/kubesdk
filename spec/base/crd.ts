@@ -14,7 +14,7 @@ describe("CRD", () => {
   });
 
   afterAll(async () => {
-    await Namespace.delete(namespace);
+    await Namespace.delete(namespace, { wait: false });
   });
 
   test("creates basic CRD", async () => {
@@ -49,7 +49,7 @@ describe("CRD", () => {
 
     // Workaround for https://github.com/microsoft/TypeScript/issues/41406
     // Typing is correct and "as any" shouldn't be needed.
-    controller.addCrd(crd as any);
+    controller.addCrd(crd);
 
     await controller.install({
       image: "busybox",

@@ -14,7 +14,7 @@ describe("Pod", () => {
   });
 
   afterAll(async () => {
-    await Namespace.delete(namespace);
+    await Namespace.delete(namespace, { wait: false });
   });
 
   test("exec", async () => {
@@ -28,7 +28,7 @@ describe("Pod", () => {
           {
             name: "base",
             image: "busybox",
-            command: ["sleep", "999d"],
+            command: ["sleep", "1h"],
             imagePullPolicy: "IfNotPresent",
           },
         ],
@@ -49,6 +49,6 @@ describe("Pod", () => {
     expect(stdout.toString()).toBe("hello!\n");
     expect(stderr).toHaveLength(0);
 
-    await pod.delete();
+    await pod.delete({ wait: false });
   });
 });

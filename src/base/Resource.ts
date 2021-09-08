@@ -39,7 +39,7 @@ export interface IResource<MetadataT, SpecT, StatusT> {
   metadata: CreatableMetadata & ExtraMetadata & MetadataT;
   spec: SpecT & BasicResourceSpec;
   status: StatusT;
-  delete(): Promise<this>;
+  delete(options?: { wait?: boolean }): Promise<this>;
   reload(): Promise<void>;
   save(): Promise<void>;
   saveStatus(): Promise<void>;
@@ -132,7 +132,7 @@ export interface StaticResource<
   isNamespaced: false;
   get(name: string): Promise<T>;
   watch(name: string): ResourceWatch<T>;
-  delete(name: string): Promise<void>;
+  delete(name: string, options?: { wait?: boolean }): Promise<void>;
   list(options?: { selector?: Selector<KindT, false>; limit?: number }): Promise<T[]>;
   watchList(options?: { selector?: Selector<KindT, false> }): ResourceListWatch<T>;
   create: {} extends SpecT
@@ -165,7 +165,7 @@ export interface StaticNamespacedResource<
   isNamespaced: true;
   get(namespace: string, name: string): Promise<T>;
   watch(namespace: string, name: string): ResourceWatch<T>;
-  delete(namespace: string, name: string): Promise<void>;
+  delete(namespace: string, name: string, options?: { wait?: boolean }): Promise<void>;
   list(options?: { namespace?: string; selector?: Selector<KindT, true>; limit?: number }): Promise<T[]>;
   watchList(options?: { namespace?: string; selector?: Selector<KindT, true> }): ResourceListWatch<T>;
   create: {} extends SpecT
@@ -240,7 +240,7 @@ export class Resource<MetadataT, SpecT, StatusT, KindT extends string, ApiVersio
       >;
   }
 
-  async delete() {
+  async delete(options?: { wait?: boolean }) {
     const conn = ClusterConnection.current();
     const raw = await conn.delete(this.selfLink, {
       preconditions: {
@@ -248,6 +248,14 @@ export class Resource<MetadataT, SpecT, StatusT, KindT extends string, ApiVersio
         uid: this.metadata.uid,
       },
     });
+
+    if (options?.wait !== false) {
+      for await (const event of this.watch()) {
+        if (event === "DELETED") {
+          break;
+        }
+      }
+    }
 
     return this.parseRawObject(conn, raw);
   }
@@ -556,13 +564,21 @@ function implementStaticMethods(
     return new ResourceListWatch<typeof klass.prototype>(conn, url, raw => parseRawObject(conn, raw));
   };
 
-  klass.delete = async (namespaceOrName: string, name?: string) => {
+  klass.delete = async (
+    namespaceOrName: string,
+    nameOrOptions?: string | { wait?: boolean },
+    maybeOptions?: { wait?: boolean },
+  ) => {
     const conn = ClusterConnection.current();
     const base = apiVersion.includes("/") ? `apis` : "api";
     let url;
+    let options;
 
     if (klass.isNamespaced) {
       const namespace = namespaceOrName;
+      const name = nameOrOptions as string;
+
+      options = maybeOptions as { wait?: boolean } | undefined;
 
       if (!name) {
         throw new Error("Expected to receive resource name");
@@ -572,10 +588,21 @@ function implementStaticMethods(
         name,
       )}`;
     } else {
+      options = nameOrOptions as { wait?: boolean } | undefined;
       url = `/${base}/${apiVersion}/${apiPlural}/${encodeURIComponent(namespaceOrName)}`;
     }
 
-    await conn.delete(url);
+    const raw = await conn.delete(url);
+
+    if (options?.wait !== false) {
+      const obj = parseRawObject(conn, raw);
+
+      for await (const event of obj.watch()) {
+        if (event === "DELETED") {
+          break;
+        }
+      }
+    }
   };
 
   klass.list = async (

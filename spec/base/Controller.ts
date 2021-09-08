@@ -14,7 +14,7 @@ describe("Controller", () => {
   });
 
   afterAll(async () => {
-    await Namespace.delete(namespace);
+    await Namespace.delete(namespace, { wait: false });
   });
 
   test("does empty install", async () => {

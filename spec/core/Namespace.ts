@@ -93,7 +93,7 @@ describe("Namespace", () => {
     expect(another).toMatchObject({
       metadata: { annotations: { hi: "there" } },
     });
-    await another.delete();
+    await another.delete({ wait: false });
   });
 
   /*
