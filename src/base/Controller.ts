@@ -526,9 +526,9 @@ export class Controller {
       try {
         callback?.(kind, name);
         if (resourceClass.isNamespaced) {
-          await resourceClass.delete(namespace, name, { wait: false });
+          await resourceClass.delete(namespace, name);
         } else {
-          await resourceClass.delete(name, { wait: false });
+          await resourceClass.delete(name);
         }
       } catch (err) {
         if (!(err instanceof KubernetesError.NotFound)) {
@@ -538,7 +538,7 @@ export class Controller {
     }
 
     callback?.("ConfigMap", this.name);
-    await ConfigMap.delete(namespace, this.name, { wait: false });
+    await ConfigMap.delete(namespace, this.name);
   }
 
   async run(action: "cronjob" | "controller" | "deployment" | "statefulset", name?: string) {
