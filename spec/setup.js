@@ -65,7 +65,7 @@ function setupStorageClass() {
   }
 }
 
-if (!process.env.CI) {
+if (!process.env.CI && run("kubectl", "config", "current-context").trim() !== "docker-desktop") {
   const clusters = kind("get", "clusters").split("\n");
   const clusterName = "kubesdk-spec";
 
