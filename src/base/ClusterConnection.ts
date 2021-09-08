@@ -250,10 +250,6 @@ export class ClusterConnection {
         }
 
         throw err;
-      } finally {
-        if (process.env.KUBESDK_TEST) {
-          await sleep(300);
-        }
       }
     }
   }
