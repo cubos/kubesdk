@@ -39,7 +39,7 @@ export interface IResource<MetadataT, SpecT, StatusT> {
   metadata: CreatableMetadata & ExtraMetadata & MetadataT;
   spec: SpecT & BasicResourceSpec;
   status: StatusT;
-  delete(options?: { wait?: boolean }): Promise<this>;
+  delete(options?: { wait?: boolean }): Promise<void>;
   reload(): Promise<void>;
   save(): Promise<void>;
   saveStatus(): Promise<void>;
@@ -131,7 +131,7 @@ export interface StaticResource<
   apiVersion: ApiVersionT;
   isNamespaced: false;
   get(name: string): Promise<T>;
-  watch(name: string): ResourceWatch<T>;
+  watch(name: string, options?: { lastSeemResourceVersion?: string }): ResourceWatch<T>;
   delete(name: string, options?: { wait?: boolean }): Promise<void>;
   list(options?: { selector?: Selector<KindT, false>; limit?: number }): Promise<T[]>;
   watchList(options?: { selector?: Selector<KindT, false> }): ResourceListWatch<T>;
@@ -164,7 +164,7 @@ export interface StaticNamespacedResource<
   apiVersion: ApiVersionT;
   isNamespaced: true;
   get(namespace: string, name: string): Promise<T>;
-  watch(namespace: string, name: string): ResourceWatch<T>;
+  watch(namespace: string, name: string, options?: { lastSeemResourceVersion?: string }): ResourceWatch<T>;
   delete(namespace: string, name: string, options?: { wait?: boolean }): Promise<void>;
   list(options?: { namespace?: string; selector?: Selector<KindT, true>; limit?: number }): Promise<T[]>;
   watchList(options?: { namespace?: string; selector?: Selector<KindT, true> }): ResourceListWatch<T>;
@@ -242,7 +242,8 @@ export class Resource<MetadataT, SpecT, StatusT, KindT extends string, ApiVersio
 
   async delete(options?: { wait?: boolean }) {
     const conn = ClusterConnection.current();
-    const raw = await conn.delete(this.selfLink, {
+
+    await conn.delete(this.selfLink, {
       preconditions: {
         resourceVersion: this.metadata.resourceVersion,
         uid: this.metadata.uid,
@@ -256,8 +257,6 @@ export class Resource<MetadataT, SpecT, StatusT, KindT extends string, ApiVersio
         }
       }
     }
-
-    return this.parseRawObject(conn, raw);
   }
 
   async reload() {
@@ -307,7 +306,9 @@ export class Resource<MetadataT, SpecT, StatusT, KindT extends string, ApiVersio
   }
 
   async *watch() {
-    for await (const event of this.base.watch(this.metadata.name)) {
+    for await (const event of this.base.watch(this.metadata.name, {
+      lastSeemResourceVersion: this.metadata.resourceVersion,
+    })) {
       if (event.type === "DELETED" || event.object.metadata.uid !== this.metadata.uid) {
         yield "DELETED";
         return;
@@ -353,7 +354,9 @@ export class NamespacedResource<
   }
 
   async *watch() {
-    for await (const event of this.nsbase.watch(this.metadata.namespace, this.metadata.name)) {
+    for await (const event of this.nsbase.watch(this.metadata.namespace, this.metadata.name, {
+      lastSeemResourceVersion: this.metadata.resourceVersion,
+    })) {
       if (event.type === "DELETED" || event.object.metadata.uid !== this.metadata.uid) {
         yield "DELETED";
         return;
@@ -518,13 +521,21 @@ function implementStaticMethods(
     return parseRawObject(conn, raw);
   };
 
-  klass.watch = (namespaceOrName: string, name?: string) => {
+  klass.watch = (
+    namespaceOrName: string,
+    nameOrOptions?: string | { lastSeemResourceVersion?: string },
+    maybeOptions?: { lastSeemResourceVersion?: string },
+  ) => {
     const conn = ClusterConnection.current();
     const base = apiVersion.includes("/") ? `apis` : "api";
     let url;
+    let options;
 
     if (klass.isNamespaced) {
       const namespace = namespaceOrName;
+      const name = nameOrOptions as string;
+
+      options = maybeOptions as { lastSeemResourceVersion?: string } | undefined;
 
       if (!name) {
         throw new Error("Expected to receive resource name");
@@ -534,10 +545,16 @@ function implementStaticMethods(
         name,
       )}`;
     } else {
+      options = nameOrOptions as { lastSeemResourceVersion?: string } | undefined;
       url = `/${base}/${apiVersion}/watch/${apiPlural}/${encodeURIComponent(namespaceOrName)}`;
     }
 
-    return new ResourceWatch<typeof klass.prototype>(conn, url, raw => parseRawObject(conn, raw));
+    return new ResourceWatch<typeof klass.prototype>(
+      conn,
+      url,
+      raw => parseRawObject(conn, raw),
+      options?.lastSeemResourceVersion,
+    );
   };
 
   klass.watchList = (

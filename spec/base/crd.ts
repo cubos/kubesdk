@@ -77,6 +77,8 @@ describe("CRD", () => {
     expect(list).toHaveLength(1);
     expect(list[0].spec.something).toBe(rand);
 
+    await list[0].delete();
+
     await controller.uninstall({ namespace });
   });
 });

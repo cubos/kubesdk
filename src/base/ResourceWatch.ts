@@ -16,13 +16,11 @@ type WatchEvent<T extends IResource<unknown, unknown, unknown>> =
 export class ResourceWatch<T extends IResource<unknown, unknown, unknown>>
   implements AsyncGenerator<WatchEvent<T>, undefined>
 {
-  private lastSeemResourceVersion: string | undefined;
-
   private closed = false;
 
-  private stream: WatchStream | undefined;
+  private stream?: WatchStream;
 
-  private streamIterator: AsyncIterator<InternalWatchEvent<T>, undefined> | undefined;
+  private streamIterator?: AsyncIterator<InternalWatchEvent<T>, undefined>;
 
   private errorCount = 0;
 
@@ -30,6 +28,7 @@ export class ResourceWatch<T extends IResource<unknown, unknown, unknown>>
     private conn: ClusterConnection,
     private url: string,
     private parseFunction: (object: object) => T | Promise<T>,
+    private lastSeemResourceVersion?: string,
   ) {}
 
   [Symbol.asyncIterator]() {

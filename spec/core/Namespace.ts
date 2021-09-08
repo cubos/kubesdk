@@ -18,9 +18,9 @@ describe("Namespace", () => {
     const namespace = await Namespace.create({ generateName: "test-" });
 
     expect(namespace.status.phase).toBe("Active");
-    const deleted = await namespace.delete();
+    await namespace.delete();
 
-    expect(deleted.status.phase).toBe("Terminating");
+    await expectThrows(Namespace.get(namespace.metadata.name), KubernetesError.NotFound);
   });
 
   test("delete non existing", async () => {
@@ -69,9 +69,7 @@ describe("Namespace", () => {
 
     await expectThrows(original.delete(), KubernetesError.Conflict);
 
-    const deleted = await modified.delete();
-
-    expect(deleted.status.phase).toBe("Terminating");
+    await modified.delete();
   });
 
   test("optimistic concurrency", async () => {
