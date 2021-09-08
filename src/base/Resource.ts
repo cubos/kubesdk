@@ -569,40 +569,21 @@ function implementStaticMethods(
     nameOrOptions?: string | { wait?: boolean },
     maybeOptions?: { wait?: boolean },
   ) => {
-    const conn = ClusterConnection.current();
-    const base = apiVersion.includes("/") ? `apis` : "api";
-    let url;
     let options;
+    let obj;
 
     if (klass.isNamespaced) {
       const namespace = namespaceOrName;
       const name = nameOrOptions as string;
 
       options = maybeOptions as { wait?: boolean } | undefined;
-
-      if (!name) {
-        throw new Error("Expected to receive resource name");
-      }
-
-      url = `/${base}/${apiVersion}/namespaces/${encodeURIComponent(namespace)}/${apiPlural}/${encodeURIComponent(
-        name,
-      )}`;
+      obj = await klass.get(namespace, name);
     } else {
       options = nameOrOptions as { wait?: boolean } | undefined;
-      url = `/${base}/${apiVersion}/${apiPlural}/${encodeURIComponent(namespaceOrName)}`;
+      obj = await klass.get(namespaceOrName);
     }
 
-    const raw = await conn.delete(url);
-
-    if (options?.wait !== false) {
-      const obj = parseRawObject(conn, raw);
-
-      for await (const event of obj.watch()) {
-        if (event === "DELETED") {
-          break;
-        }
-      }
-    }
+    await obj.delete(options);
   };
 
   klass.list = async (
