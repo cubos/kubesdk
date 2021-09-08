@@ -693,7 +693,7 @@ export class Controller {
           {
             data: {},
             stringData: helm
-              ? Object.keys(secretEnv.values).reduce<any>((acc, cur) => {
+              ? Object.keys(secretEnv.values).reduce<Record<string, string>>((acc, cur) => {
                   acc[cur] = `{{ .Values.secrets.${secretEnv.name}.${cur} | default ${JSON.stringify(
                     secretEnv.values[cur],
                   )} }}`;
