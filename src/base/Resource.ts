@@ -1,6 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import * as QueryString from "querystring";
-
 import type { LabelSelector } from "../core/types";
 import { has, sleep, throwError } from "../utils";
 import { ClusterConnection } from "./ClusterConnection";
@@ -101,7 +99,7 @@ export interface IStaticResource<InstanceT, MetadataT, SpecT, StatusT> {
   ): InstanceT;
 }
 
-type Selector<KindT, IsNamespaced extends boolean> = LabelSelector & {
+export type ListSelector<KindT, IsNamespaced extends boolean> = LabelSelector & {
   matchFields?: Record<SelectableFields<KindT, IsNamespaced>, string>;
   doesntMatchFields?: Record<SelectableFields<KindT, IsNamespaced>, string>;
 };
@@ -133,8 +131,8 @@ export interface StaticResource<
   get(name: string): Promise<T>;
   watch(name: string, options?: { lastSeemResourceVersion?: string }): ResourceWatch<T>;
   delete(name: string, options?: { wait?: boolean }): Promise<void>;
-  list(options?: { selector?: Selector<KindT, false>; limit?: number }): Promise<T[]>;
-  watchList(options?: { selector?: Selector<KindT, false> }): ResourceListWatch<T>;
+  list(options?: { selector?: ListSelector<KindT, false>; limit?: number }): Promise<T[]>;
+  watchList(options?: { selector?: ListSelector<KindT, false> }): ResourceListWatch<T>;
   create: {} extends SpecT
     ? (
         metadata: Omit<CreatableMetadata, "name"> & MetadataT & ({ generateName: string } | { name: string }),
@@ -166,8 +164,8 @@ export interface StaticNamespacedResource<
   get(namespace: string, name: string): Promise<T>;
   watch(namespace: string, name: string, options?: { lastSeemResourceVersion?: string }): ResourceWatch<T>;
   delete(namespace: string, name: string, options?: { wait?: boolean }): Promise<void>;
-  list(options?: { namespace?: string; selector?: Selector<KindT, true>; limit?: number }): Promise<T[]>;
-  watchList(options?: { namespace?: string; selector?: Selector<KindT, true> }): ResourceListWatch<T>;
+  list(options?: { namespace?: string; selector?: ListSelector<KindT, true>; limit?: number }): Promise<T[]>;
+  watchList(options?: { namespace?: string; selector?: ListSelector<KindT, true> }): ResourceListWatch<T>;
   create: {} extends SpecT
     ? (
         metadata: Omit<CreatableMetadata, "name"> &
@@ -436,8 +434,8 @@ function implementStaticMethods(
 
   (klass as unknown as Record<string, unknown>).parseRawObject = parseRawObject;
 
-  function selectorToQueryObject(selector?: Selector<string, boolean>) {
-    const qs: Record<string, string> = {};
+  function selectorToQueryObject(selector?: ListSelector<string, boolean>) {
+    const qs = new URLSearchParams();
 
     const labelSelector: string[] = [];
 
@@ -470,7 +468,7 @@ function implementStaticMethods(
     }
 
     if (labelSelector.length > 0) {
-      qs.labelSelector = labelSelector.join(",");
+      qs.append("labelSelector", labelSelector.join(","));
     }
 
     const fieldSelector: string[] = [];
@@ -488,7 +486,7 @@ function implementStaticMethods(
     }
 
     if (fieldSelector.length > 0) {
-      qs.fieldSelector = fieldSelector.join(",");
+      qs.append("fieldSelector", fieldSelector.join(","));
     }
 
     return qs;
@@ -557,7 +555,7 @@ function implementStaticMethods(
   klass.watchList = (
     options: {
       namespace?: string;
-      selector?: Selector<string, boolean>;
+      selector?: ListSelector<string, boolean>;
       limit?: number;
     } = {},
   ) => {
@@ -569,11 +567,11 @@ function implementStaticMethods(
     const qs = selectorToQueryObject(options.selector);
 
     if (options.limit) {
-      qs.limit = `${options.limit}`;
+      qs.append("limit", `${options.limit}`);
     }
 
     const conn = ClusterConnection.current();
-    const url = `${apiUrl}?${QueryString.stringify(qs)}`;
+    const url = `${apiUrl}?${qs.toString()}`;
 
     return new ResourceListWatch<typeof klass.prototype>(conn, url, raw => parseRawObject(raw));
   };
@@ -603,7 +601,7 @@ function implementStaticMethods(
   klass.list = async (
     options: {
       namespace?: string;
-      selector?: Selector<string, boolean>;
+      selector?: ListSelector<string, boolean>;
       limit?: number;
     } = {},
   ) => {
@@ -615,7 +613,7 @@ function implementStaticMethods(
     const qs = selectorToQueryObject(options.selector);
 
     if (options.limit) {
-      qs.limit = `${options.limit}`;
+      qs.append("limit", `${options.limit}`);
     }
 
     const conn = ClusterConnection.current();
@@ -623,7 +621,7 @@ function implementStaticMethods(
       kind: string;
       apiVersion: string;
       items: object[];
-    } = await conn.get(`${apiUrl}?${QueryString.stringify(qs)}`);
+    } = await conn.get(`${apiUrl}?${qs.toString()}`);
 
     if (!list.kind.endsWith("List")) {
       throw new Error(`Expected ${list.kind} to end with 'List'`);
