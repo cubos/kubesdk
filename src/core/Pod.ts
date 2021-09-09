@@ -17,8 +17,9 @@ import type {
 export interface PodMetadata {}
 
 interface PodAffinityTerm {
-  labelSelector?: LabelSelector;
-  namespaces: string[];
+  labelSelector: LabelSelector;
+  namespaceSelector?: LabelSelector;
+  namespaces?: string[];
   topologyKey: string;
 }
 
