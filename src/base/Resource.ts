@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+
 import type { LabelSelector } from "../core/types";
 import { has, sleep, throwError } from "../utils";
 import { ClusterConnection } from "./ClusterConnection";
@@ -128,6 +129,7 @@ export interface StaticResource<
   kind: KindT;
   apiVersion: ApiVersionT;
   isNamespaced: false;
+  fromRawObject(raw: object): T;
   get(name: string): Promise<T>;
   watch(name: string, options?: { lastSeemResourceVersion?: string }): ResourceWatch<T>;
   delete(name: string, options?: { wait?: boolean }): Promise<void>;
@@ -161,6 +163,7 @@ export interface StaticNamespacedResource<
   kind: KindT;
   apiVersion: ApiVersionT;
   isNamespaced: true;
+  fromRawObject(raw: object): T;
   get(namespace: string, name: string): Promise<T>;
   watch(namespace: string, name: string, options?: { lastSeemResourceVersion?: string }): ResourceWatch<T>;
   delete(namespace: string, name: string, options?: { wait?: boolean }): Promise<void>;
@@ -202,12 +205,6 @@ export class Resource<MetadataT, SpecT, StatusT, KindT extends string, ApiVersio
   protected static apiPlural: string | null = null;
 
   protected static hasInlineSpec = false;
-
-  private static parseRawObject: (obj: unknown) => Resource<unknown, unknown, unknown, string, string>;
-
-  protected parseRawObject(obj: unknown): this {
-    return this.base.parseRawObject(obj) as this;
-  }
 
   protected get selfLink(): string {
     const base = this.base.apiVersion.includes("/") ? `apis` : "api";
@@ -257,7 +254,7 @@ export class Resource<MetadataT, SpecT, StatusT, KindT extends string, ApiVersio
   async reload() {
     const conn = ClusterConnection.current();
     const raw = await conn.get(this.selfLink);
-    const obj = this.parseRawObject(raw);
+    const obj = this.base.fromRawObject(raw);
 
     this.metadata = obj.metadata;
     this.spec = obj.spec;
@@ -283,7 +280,7 @@ export class Resource<MetadataT, SpecT, StatusT, KindT extends string, ApiVersio
   async save() {
     const conn = ClusterConnection.current();
     const raw = await conn.put(this.selfLink, this.toJSON());
-    const obj = this.parseRawObject(raw);
+    const obj = this.base.fromRawObject(raw);
 
     this.metadata = obj.metadata;
     this.spec = obj.spec;
@@ -293,7 +290,7 @@ export class Resource<MetadataT, SpecT, StatusT, KindT extends string, ApiVersio
   async saveStatus() {
     const conn = ClusterConnection.current();
     const raw = await conn.put(`${this.selfLink}/status`, this.toJSON());
-    const obj = this.parseRawObject(raw);
+    const obj = this.base.fromRawObject(raw);
 
     this.metadata = obj.metadata;
     this.spec = obj.spec;
@@ -373,7 +370,7 @@ function implementStaticMethods(
   klass: (typeof Resource &
     Omit<
       StaticResource<unknown, unknown, unknown, IResource<unknown, unknown, unknown>, string, string>,
-      "isNamespaced" | "kind" | "apiVersion"
+      "isNamespaced" | "kind" | "apiVersion" | "fromRawObject"
     > &
     Omit<
       StaticNamespacedResource<
@@ -384,13 +381,14 @@ function implementStaticMethods(
         string,
         string
       >,
-      "isNamespaced" | "kind" | "apiVersion"
+      "isNamespaced" | "kind" | "apiVersion" | "fromRawObject"
     >) & {
     isNamespaced: boolean;
     kind: string | null;
     apiVersion: string | null;
     apiPlural: string | null;
     hasInlineSpec: boolean;
+    fromRawObject(obj: object): Resource<any, any, any, string, string>;
   },
 ) {
   const kind = klass.kind ?? throwError(new Error(`Please specify 'kind' for ${klass.name}`));
@@ -398,7 +396,7 @@ function implementStaticMethods(
   const apiPlural = klass.apiPlural ?? throwError(new Error(`Please specify 'apiPlural' for ${klass.name}`));
   const { hasInlineSpec } = klass;
 
-  function parseRawObject(obj: object) {
+  klass.fromRawObject = (obj: object) => {
     if (!has(obj, "kind") || !has(obj, "apiVersion") || !has(obj, "metadata")) {
       throw new Error(`Expected to receive an object with "kind", "apiVersion" and "metadata"`);
     }
@@ -430,9 +428,7 @@ function implementStaticMethods(
     }
 
     return new klass(obj.metadata as any, spec, has(obj, "status") ? (obj.status as any) : {});
-  }
-
-  (klass as unknown as Record<string, unknown>).parseRawObject = parseRawObject;
+  };
 
   function selectorToQueryObject(selector?: ListSelector<string, boolean>) {
     const qs = new URLSearchParams();
@@ -513,7 +509,7 @@ function implementStaticMethods(
 
     const raw = await conn.get(url);
 
-    return parseRawObject(raw);
+    return klass.fromRawObject(raw);
   };
 
   klass.watch = (
@@ -547,7 +543,7 @@ function implementStaticMethods(
     return new ResourceWatch<typeof klass.prototype>(
       conn,
       url,
-      raw => parseRawObject(raw),
+      raw => klass.fromRawObject(raw),
       options?.lastSeemResourceVersion,
     );
   };
@@ -573,7 +569,7 @@ function implementStaticMethods(
     const conn = ClusterConnection.current();
     const url = `${apiUrl}?${qs.toString()}`;
 
-    return new ResourceListWatch<typeof klass.prototype>(conn, url, raw => parseRawObject(raw));
+    return new ResourceListWatch<typeof klass.prototype>(conn, url, raw => klass.fromRawObject(raw));
   };
 
   klass.delete = async (
@@ -630,7 +626,7 @@ function implementStaticMethods(
     const innerKind = list.kind.replace(/List$/u, "");
 
     return list.items.map(raw =>
-      parseRawObject({
+      klass.fromRawObject({
         kind: innerKind,
         apiVersion: list.apiVersion,
         ...raw,
@@ -669,7 +665,7 @@ function implementStaticMethods(
 
     // Kubernetes responds the POST request before the resource is actually accessible with a GET.
     // An user could create and then try to get and end up receiving a NotFound error.
-    const copy = parseRawObject(raw);
+    const copy = klass.fromRawObject(raw);
 
     for (let i = 0; i < 20; ++i) {
       try {
@@ -685,7 +681,7 @@ function implementStaticMethods(
       }
     }
 
-    return parseRawObject(raw);
+    return klass.fromRawObject(raw);
   };
 
   (klass as StaticResource<unknown, unknown, unknown, IResource<unknown, unknown, unknown>, string, string>).apply =
@@ -716,7 +712,7 @@ function implementStaticMethods(
         },
       );
 
-      return parseRawObject(raw);
+      return klass.fromRawObject(raw);
     };
 
   klass.export = (metadata: CreatableMetadata & { namespace?: string }, spec: unknown) => {
