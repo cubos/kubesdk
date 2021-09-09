@@ -169,14 +169,20 @@ interface Container {
   }>;
   readinessProbe?: Probe;
   resources?: {
-    limits?: {
-      memory?: string | number;
-      cpu?: string | number;
-    };
-    requests?: {
-      memory?: string | number;
-      cpu?: string | number;
-    };
+    limits?:
+      | {
+          memory?: string | number;
+          cpu?: string | number;
+          "ephemeral-storage"?: string | number;
+        }
+      | Record<`hugepages-${number}${"Gi" | "Mi"}`, string | number>;
+    requests?:
+      | {
+          memory?: string | number;
+          cpu?: string | number;
+          "ephemeral-storage"?: string | number;
+        }
+      | Record<`hugepages-${number}${"Gi" | "Mi"}`, string | number>;
   };
   securityContext?: SecurityContext;
   startupProbe?: Probe;

@@ -27,14 +27,14 @@ export interface NodeSpec {
   unschedulable?: boolean;
 }
 
-interface Resources {
-  cpu: string;
-  "ephemeral-storage": string;
-  "hugepages-1Gi": string;
-  "hugepages-2Mi": string;
-  memory: string;
-  pods: string;
-}
+type Resources =
+  | {
+      cpu: string;
+      "ephemeral-storage": string;
+      memory: string;
+      pods: string;
+    }
+  | Record<`hugepages-${number}${"Gi" | "Mi"}`, string>;
 
 export interface NodeStatus {
   addresses?: Array<{
