@@ -118,7 +118,7 @@ class ResourceListIterator<T extends IResource<unknown, unknown, unknown>> imple
 
   private continue?: string;
 
-  public resourceVersion = "";
+  public resourceVersion: string;
 
   private started = false;
 
@@ -134,7 +134,10 @@ class ResourceListIterator<T extends IResource<unknown, unknown, unknown>> imple
     private namespace?: string,
     private selector?: ListSelector<string, boolean>,
     private pageSize?: number,
-  ) {}
+    resourceVersion?: string,
+  ) {
+    this.resourceVersion = resourceVersion ?? "";
+  }
 
   async next(): Promise<IteratorResult<T, undefined>> {
     const element = this.items.shift();
@@ -158,6 +161,10 @@ class ResourceListIterator<T extends IResource<unknown, unknown, unknown>> imple
 
     if (this.continue) {
       qs.append("continue", `${this.continue}`);
+    }
+
+    if (this.resourceVersion) {
+      qs.append("resourceVersion", `${this.resourceVersion}`);
     }
 
     const conn = ClusterConnection.current();
@@ -229,6 +236,7 @@ export class AsyncResourceList<T extends IResource<unknown, unknown, unknown>> i
     private namespace?: string,
     private selector?: ListSelector<string, boolean>,
     private pageSize?: number,
+    private resourceVersion?: string,
   ) {}
 
   then<TResult1 = ResourceList<T>, TResult2 = never>(
@@ -259,6 +267,10 @@ export class AsyncResourceList<T extends IResource<unknown, unknown, unknown>> i
 
     const qs = selectorToQueryObject(this.selector);
 
+    if (this.resourceVersion) {
+      qs.append("resourceVersion", `${this.resourceVersion}`);
+    }
+
     const conn = ClusterConnection.current();
     const url = `${apiUrl}?${qs.toString()}`;
 
@@ -266,6 +278,6 @@ export class AsyncResourceList<T extends IResource<unknown, unknown, unknown>> i
   }
 
   [Symbol.asyncIterator]() {
-    return new ResourceListIterator<T>(this.klass, this.namespace, this.selector, this.pageSize);
+    return new ResourceListIterator<T>(this.klass, this.namespace, this.selector, this.pageSize, this.resourceVersion);
   }
 }

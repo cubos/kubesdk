@@ -82,7 +82,11 @@ export interface StaticResource<
   get(name: string): Promise<T>;
   watch(name: string, options?: { lastSeemResourceVersion?: string }): ResourceWatch<T>;
   delete(name: string, options?: { wait?: boolean }): Promise<void>;
-  list(options?: { selector?: ListSelector<KindT, false>; pageSize?: number }): AsyncResourceList<T>;
+  list(options?: {
+    selector?: ListSelector<KindT, false>;
+    pageSize?: number;
+    resourceVersion?: string;
+  }): AsyncResourceList<T>;
   create: {} extends SpecT
     ? (
         metadata: Omit<CreatableMetadata, "name"> & MetadataT & ({ generateName: string } | { name: string }),
@@ -115,7 +119,12 @@ export interface StaticNamespacedResource<
   get(namespace: string, name: string): Promise<T>;
   watch(namespace: string, name: string, options?: { lastSeemResourceVersion?: string }): ResourceWatch<T>;
   delete(namespace: string, name: string, options?: { wait?: boolean }): Promise<void>;
-  list(options?: { namespace?: string; selector?: ListSelector<KindT, true>; pageSize?: number }): AsyncResourceList<T>;
+  list(options?: {
+    namespace?: string;
+    selector?: ListSelector<KindT, true>;
+    pageSize?: number;
+    resourceVersion?: string;
+  }): AsyncResourceList<T>;
   create: {} extends SpecT
     ? (
         metadata: Omit<CreatableMetadata, "name"> &
@@ -464,6 +473,7 @@ function implementStaticMethods(
       namespace?: string;
       selector?: ListSelector<string, boolean>;
       pageSize?: number;
+      resourceVersion?: string;
     } = {},
   ) => {
     return new AsyncResourceList<typeof klass.prototype>(
@@ -478,6 +488,7 @@ function implementStaticMethods(
       options.namespace,
       options.selector,
       options.pageSize,
+      options.resourceVersion,
     );
   };
 
