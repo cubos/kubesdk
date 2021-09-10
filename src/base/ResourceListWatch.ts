@@ -144,7 +144,7 @@ export class ResourceListWatch<T extends IResource<unknown, unknown, unknown>>
     return Promise.resolve({ done: true, value: undefined } as const);
   }
 
-  close() {
+  private close() {
     this.closed = true;
     this.stream?.destroy();
     this.stream = undefined;

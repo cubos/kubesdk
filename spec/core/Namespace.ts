@@ -37,12 +37,6 @@ describe("Namespace", () => {
     expect(list.length).toBeGreaterThan(3);
   });
 
-  test("list with limit", async () => {
-    const list = await Namespace.list({ limit: 2 });
-
-    expect(list.length).toBe(2);
-  });
-
   test("create, get, list, apply and delete", async () => {
     const original = await Namespace.create({ generateName: "test-" });
     const { name } = original.metadata;
@@ -61,11 +55,13 @@ describe("Namespace", () => {
     expect(await Namespace.get(name)).toStrictEqual(modified);
     expect(await Namespace.list()).toContainEqual(modified);
     expect(await Namespace.list()).not.toContainEqual(original);
-    expect(
-      await Namespace.list({
-        selector: { matchLabels: { foo: name } },
-      }),
-    ).toStrictEqual([modified]);
+
+    const list = await Namespace.list({
+      selector: { matchLabels: { foo: name } },
+    });
+
+    expect(list).toHaveLength(1);
+    expect(list[0]).toStrictEqual(modified);
 
     await expectThrows(original.delete(), KubernetesError.Conflict);
 

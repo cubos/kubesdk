@@ -58,7 +58,7 @@ describe("CRD", () => {
 
     await sleep(100);
 
-    expect(await TestV1.list()).toEqual([]);
+    expect(await TestV1.list()).toHaveLength(0);
 
     const rand = randomBytes(8).toString("hex");
 

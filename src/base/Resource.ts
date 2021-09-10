@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import type { LabelSelector } from "../core/types";
 import { has, sleep, throwError } from "../utils";
 import { ClusterConnection } from "./ClusterConnection";
 import { KubernetesError } from "./KubernetesError";
-import { ResourceListWatch } from "./ResourceListWatch";
+import type { ListSelector } from "./ResourceList";
+import { AsyncResourceList } from "./ResourceList";
 import { ResourceWatch } from "./ResourceWatch";
 
 export interface CreatableMetadata {
@@ -45,52 +45,6 @@ export interface IResource<MetadataT, SpecT, StatusT> {
   watch(): AsyncGenerator<"DELETED" | "ADDED" | "MODIFIED">;
 }
 
-type SelectableFields<KindT, IsNamespaced extends boolean> = KindT extends "Event"
-  ?
-      | "involvedObject.kind"
-      | "involvedObject.namespace"
-      | "involvedObject.name"
-      | "involvedObject.uid"
-      | "involvedObject.apiVersion"
-      | "involvedObject.resourceVersion"
-      | "involvedObject.fieldPath"
-      | "reason"
-      | "reportingComponent"
-      | "source"
-      | "type"
-      | "metadata.namespace"
-      | "metadata.name"
-  : KindT extends "Namespace"
-  ? "status.phase" | "metadata.name"
-  : KindT extends "Secret"
-  ? "metadata.namespace" | "metadata.name"
-  : KindT extends "Node"
-  ? "metadata.name" | "spec.unschedulable"
-  : KindT extends "ReplicationController"
-  ? "metadata.name" | "metadata.namespace" | "status.replicas"
-  : KindT extends "Pod"
-  ?
-      | "metadata.name"
-      | "metadata.namespace"
-      | "spec.nodeName"
-      | "spec.restartPolicy"
-      | "spec.schedulerName"
-      | "spec.serviceAccountName"
-      | "status.phase"
-      | "status.podIP"
-      | "status.podIPs"
-      | "status.nominatedNodeName"
-  : KindT extends "Job"
-  ? "metadata.name" | "metadata.namespace" | "status.successful"
-  : KindT extends "CronJob"
-  ? "metadata.name" | "metadata.namespace" | "status.successful"
-  : KindT extends "CertificateSigningRequest"
-  ? "metadata.name" | "spec.signerName"
-  : KindT extends "StatefulSet"
-  ? "metadata.name" | "metadata.namespace" | "status.successful"
-  : IsNamespaced extends true
-  ? "metadata.name" | "metadata.namespace"
-  : "metadata.name";
 export interface IStaticResource<InstanceT, MetadataT, SpecT, StatusT> {
   // eslint-disable-next-line @typescript-eslint/prefer-function-type
   new (
@@ -99,11 +53,6 @@ export interface IStaticResource<InstanceT, MetadataT, SpecT, StatusT> {
     status: StatusT,
   ): InstanceT;
 }
-
-export type ListSelector<KindT, IsNamespaced extends boolean> = LabelSelector & {
-  matchFields?: Record<SelectableFields<KindT, IsNamespaced>, string>;
-  doesntMatchFields?: Record<SelectableFields<KindT, IsNamespaced>, string>;
-};
 
 export type INamespacedResource<MetadataT, SpecT, StatusT> = IResource<
   MetadataT & { namespace: string },
@@ -133,8 +82,7 @@ export interface StaticResource<
   get(name: string): Promise<T>;
   watch(name: string, options?: { lastSeemResourceVersion?: string }): ResourceWatch<T>;
   delete(name: string, options?: { wait?: boolean }): Promise<void>;
-  list(options?: { selector?: ListSelector<KindT, false>; limit?: number }): Promise<T[]>;
-  watchList(options?: { selector?: ListSelector<KindT, false> }): ResourceListWatch<T>;
+  list(options?: { selector?: ListSelector<KindT, false>; pageSize?: number }): AsyncResourceList<T>;
   create: {} extends SpecT
     ? (
         metadata: Omit<CreatableMetadata, "name"> & MetadataT & ({ generateName: string } | { name: string }),
@@ -167,8 +115,7 @@ export interface StaticNamespacedResource<
   get(namespace: string, name: string): Promise<T>;
   watch(namespace: string, name: string, options?: { lastSeemResourceVersion?: string }): ResourceWatch<T>;
   delete(namespace: string, name: string, options?: { wait?: boolean }): Promise<void>;
-  list(options?: { namespace?: string; selector?: ListSelector<KindT, true>; limit?: number }): Promise<T[]>;
-  watchList(options?: { namespace?: string; selector?: ListSelector<KindT, true> }): ResourceListWatch<T>;
+  list(options?: { namespace?: string; selector?: ListSelector<KindT, true>; pageSize?: number }): AsyncResourceList<T>;
   create: {} extends SpecT
     ? (
         metadata: Omit<CreatableMetadata, "name"> &
@@ -430,64 +377,6 @@ function implementStaticMethods(
     return new klass(obj.metadata as any, spec, has(obj, "status") ? (obj.status as any) : {});
   };
 
-  function selectorToQueryObject(selector?: ListSelector<string, boolean>) {
-    const qs = new URLSearchParams();
-
-    const labelSelector: string[] = [];
-
-    if (selector?.matchLabels) {
-      for (const [key, value] of Object.entries(selector.matchLabels)) {
-        labelSelector.push(`${key}=${value}`);
-      }
-    }
-
-    if (selector?.matchExpressions) {
-      for (const expression of selector.matchExpressions) {
-        switch (expression.operator) {
-          case "Exists":
-            labelSelector.push(`${expression.key}`);
-            break;
-          case "DoesNotExist":
-            labelSelector.push(`!${expression.key}`);
-            break;
-          case "In":
-            labelSelector.push(`${expression.key} in (${expression.values.join(",")})`);
-            break;
-          case "NotIn":
-            labelSelector.push(`${expression.key} notin (${expression.values.join(",")})`);
-            break;
-          default:
-            // Never
-            break;
-        }
-      }
-    }
-
-    if (labelSelector.length > 0) {
-      qs.append("labelSelector", labelSelector.join(","));
-    }
-
-    const fieldSelector: string[] = [];
-
-    if (selector?.matchFields) {
-      for (const [key, value] of Object.entries(selector.matchFields)) {
-        fieldSelector.push(`${key}==${value}`);
-      }
-    }
-
-    if (selector?.doesntMatchFields) {
-      for (const [key, value] of Object.entries(selector.doesntMatchFields)) {
-        fieldSelector.push(`${key}!=${value}`);
-      }
-    }
-
-    if (fieldSelector.length > 0) {
-      qs.append("fieldSelector", fieldSelector.join(","));
-    }
-
-    return qs;
-  }
-
   klass.get = async (namespaceOrName: string, name?: string) => {
     const conn = ClusterConnection.current();
     const base = apiVersion.includes("/") ? `apis` : "api";
@@ -548,30 +437,6 @@ function implementStaticMethods(
     );
   };
 
-  klass.watchList = (
-    options: {
-      namespace?: string;
-      selector?: ListSelector<string, boolean>;
-      limit?: number;
-    } = {},
-  ) => {
-    const base = apiVersion.includes("/") ? `apis` : "api";
-    const apiUrl = `/${base}/${apiVersion}/watch/${
-      klass.isNamespaced && options.namespace ? `namespaces/${encodeURIComponent(options.namespace)}/` : ``
-    }${apiPlural}`;
-
-    const qs = selectorToQueryObject(options.selector);
-
-    if (options.limit) {
-      qs.append("limit", `${options.limit}`);
-    }
-
-    const conn = ClusterConnection.current();
-    const url = `${apiUrl}?${qs.toString()}`;
-
-    return new ResourceListWatch<typeof klass.prototype>(conn, url, raw => klass.fromRawObject(raw));
-  };
-
   klass.delete = async (
     namespaceOrName: string,
     nameOrOptions?: string | { wait?: boolean },
@@ -594,43 +459,25 @@ function implementStaticMethods(
     await obj.delete(options);
   };
 
-  klass.list = async (
+  klass.list = (
     options: {
       namespace?: string;
       selector?: ListSelector<string, boolean>;
-      limit?: number;
+      pageSize?: number;
     } = {},
   ) => {
-    const base = apiVersion.includes("/") ? `apis` : "api";
-    const apiUrl = `/${base}/${apiVersion}/${
-      klass.isNamespaced && options.namespace ? `namespaces/${encodeURIComponent(options.namespace)}/` : ``
-    }${apiPlural}`;
-
-    const qs = selectorToQueryObject(options.selector);
-
-    if (options.limit) {
-      qs.append("limit", `${options.limit}`);
-    }
-
-    const conn = ClusterConnection.current();
-    const list: {
-      kind: string;
-      apiVersion: string;
-      items: object[];
-    } = await conn.get(`${apiUrl}?${qs.toString()}`);
-
-    if (!list.kind.endsWith("List")) {
-      throw new Error(`Expected ${list.kind} to end with 'List'`);
-    }
-
-    const innerKind = list.kind.replace(/List$/u, "");
-
-    return list.items.map(raw =>
-      klass.fromRawObject({
-        kind: innerKind,
-        apiVersion: list.apiVersion,
-        ...raw,
-      }),
+    return new AsyncResourceList<typeof klass.prototype>(
+      {
+        kind,
+        apiPlural,
+        apiVersion,
+        hasInlineSpec,
+        isNamespaced: klass.isNamespaced,
+        fromRawObject: klass.fromRawObject,
+      },
+      options.namespace,
+      options.selector,
+      options.pageSize,
     );
   };
 
