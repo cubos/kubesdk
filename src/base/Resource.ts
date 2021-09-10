@@ -80,6 +80,7 @@ export interface StaticResource<
   isNamespaced: false;
   fromRawObject(raw: object): T;
   get(name: string): Promise<T>;
+  getIfExists(name: string): Promise<T | null>;
   watch(name: string, options?: { lastSeemResourceVersion?: string }): ResourceWatch<T>;
   delete(name: string, options?: { wait?: boolean }): Promise<void>;
   list(options?: {
@@ -117,6 +118,7 @@ export interface StaticNamespacedResource<
   isNamespaced: true;
   fromRawObject(raw: object): T;
   get(namespace: string, name: string): Promise<T>;
+  getIfExists(namespace: string, name: string): Promise<T | null>;
   watch(namespace: string, name: string, options?: { lastSeemResourceVersion?: string }): ResourceWatch<T>;
   delete(namespace: string, name: string, options?: { wait?: boolean }): Promise<void>;
   list(options?: {
@@ -386,7 +388,7 @@ function implementStaticMethods(
     return new klass(obj.metadata as any, spec, has(obj, "status") ? (obj.status as any) : {});
   };
 
-  klass.get = async (namespaceOrName: string, name?: string) => {
+  async function get(namespaceOrName: string, name?: string) {
     const conn = ClusterConnection.current();
     const base = apiVersion.includes("/") ? `apis` : "api";
     let url;
@@ -408,6 +410,20 @@ function implementStaticMethods(
     const raw = await conn.get(url);
 
     return klass.fromRawObject(raw);
+  }
+
+  klass.get = get;
+
+  klass.getIfExists = async (namespaceOrName: string, name?: string) => {
+    try {
+      return await get(namespaceOrName, name);
+    } catch (e) {
+      if (e instanceof KubernetesError.NotFound) {
+        return null;
+      }
+
+      throw e;
+    }
   };
 
   klass.watch = (
