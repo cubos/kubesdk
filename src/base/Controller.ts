@@ -102,8 +102,11 @@ export class Controller {
     });
   }
 
-  async cli(argv: string[] = process.argv.slice(2)) {
-    await new ControllerCli(this).cli(argv);
+  cli(argv: string[] = process.argv.slice(2)) {
+    new ControllerCli(this).cli(argv).catch(err => {
+      console.error(err);
+      process.exit(1);
+    });
   }
 
   async installList(namespace: string) {
