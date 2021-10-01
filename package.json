@@ -25,7 +25,7 @@
   "homepage": "https://github.com/cubos/kubesdk#readme",
   "dependencies": {
     "ajv": "^8.6.2",
-    "axios": "^0.21.3",
+    "axios": "^0.22.0",
     "axios-logger": "^2.5.0",
     "axios-retry": "^3.1.9",
     "command-line-args": "^5.2.0",
