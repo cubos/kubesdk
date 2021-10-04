@@ -271,6 +271,8 @@ export class AsyncResourceList<T extends IResource<unknown, unknown, unknown>> i
       qs.append("resourceVersion", `${this.resourceVersion}`);
     }
 
+    qs.append("timeoutSeconds", "999999999");
+
     const conn = ClusterConnection.current();
     const url = `${apiUrl}?${qs.toString()}`;
 
