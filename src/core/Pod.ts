@@ -16,7 +16,7 @@ import type {
 
 export interface PodMetadata {}
 
-interface PodAffinityTerm {
+export interface PodAffinityTerm {
   labelSelector: LabelSelector;
   namespaceSelector?: LabelSelector;
   namespaces?: string[];
@@ -56,19 +56,20 @@ type Probe = Handler & {
   timeoutSeconds?: number;
 };
 
-interface SELinuxOptions {
+export interface SELinuxOptions {
   user?: string;
   role?: string;
   type?: string;
   level?: string;
 }
-interface WindowsSecurityContextOptions {
+
+export interface WindowsSecurityContextOptions {
   gmsaCredentialSpec?: string;
   gmsaCredentialSpecName?: string;
   runAsUserName?: string;
 }
 
-interface SecurityContext {
+export interface SecurityContext {
   allowPrivilegeEscalation?: boolean;
   capabilities?: {
     add?: string[];
@@ -84,7 +85,7 @@ interface SecurityContext {
   windowsOptions?: WindowsSecurityContextOptions;
 }
 
-interface PodSecurityContext {
+export interface PodSecurityContext {
   fsGroup: number;
   runAsGroup: number;
   runAsNonRoot: boolean;
@@ -95,7 +96,7 @@ interface PodSecurityContext {
   windowsOptions: WindowsSecurityContextOptions;
 }
 
-interface Container {
+export interface Container {
   args?: string[];
   command?: string[];
   env?: Array<
@@ -206,7 +207,7 @@ interface Container {
   workingDir?: string;
 }
 
-interface KeyToPath {
+export interface KeyToPath {
   key: string;
   path: string;
   mode?: string;
@@ -519,7 +520,7 @@ type ContainerState =
       };
     };
 
-interface ContainerStatus {
+export interface ContainerStatus {
   containerID: string;
   image: string;
   imageID: string;
