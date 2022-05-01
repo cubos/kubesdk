@@ -11,6 +11,7 @@ import Rimraf from "rimraf";
 import slugify from "slugify";
 import { tar } from "zip-a-folder";
 
+import { has } from "../utils";
 import { ClusterConnection } from "./ClusterConnection";
 import type { Controller } from "./Controller";
 
@@ -246,7 +247,11 @@ export class ControllerCli {
       },
     ];
 
-    const options = commandLineArgs(optionDefinitions, { argv });
+    const options = commandLineArgs(optionDefinitions, { argv }) as {
+      help?: boolean;
+      chart?: string;
+      image?: string;
+    };
 
     function showHelp() {
       console.log(
@@ -276,9 +281,16 @@ export class ControllerCli {
       throw new Error(`Chart.yaml not found: ${options.chart}`);
     }
 
-    const parsedChartYaml: any = jsyaml.load(await fs.readFile(options.chart, "utf8"));
+    const parsedChartYaml = jsyaml.load(await fs.readFile(options.chart, "utf8"));
 
-    if (!parsedChartYaml || !parsedChartYaml.name || !parsedChartYaml.version) {
+    if (
+      typeof parsedChartYaml !== "object" ||
+      !parsedChartYaml ||
+      !has(parsedChartYaml, "name") ||
+      typeof parsedChartYaml.name !== "string" ||
+      !has(parsedChartYaml, "version") ||
+      typeof parsedChartYaml.version !== "string"
+    ) {
       throw new Error(`Invalid Chart.yaml`);
     }
 
@@ -311,14 +323,18 @@ export class ControllerCli {
 
     const valuesYaml = jsyaml.dump({
       image: options.image,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       secrets: resources
         .filter(r => r.kind === "Secret")
-        .reduce<any>((acc, cur) => {
+        .reduce((acc, cur) => {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
           acc[cur.metadata.name] = Object.keys(cur.stringData).reduce<any>((acc2, cur2) => {
             acc2[cur2] = "";
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-return
             return acc2;
           }, {});
 
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-return
           return acc;
         }, {}),
     });

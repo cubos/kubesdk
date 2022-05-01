@@ -233,7 +233,11 @@ export class KubeConfig {
       throw new Error(`Expected property "clusters" of Config to an array`);
     }
 
-    for (const cluster of config.clusters) {
+    for (const cluster of config.clusters as unknown[]) {
+      if (typeof cluster !== "object" || !cluster) {
+        throw new Error("Expected to see an object");
+      }
+
       if (!has(cluster, "name")) {
         throw new Error(`Expected Config's "clusters" entry to have a "name" property`);
       }
@@ -266,7 +270,11 @@ export class KubeConfig {
       throw new Error(`Expected property "users" of Config to an array`);
     }
 
-    for (const user of config.users) {
+    for (const user of config.users as unknown[]) {
+      if (typeof user !== "object" || !user) {
+        throw new Error("Expected to see an object");
+      }
+
       if (!has(user, "name")) {
         throw new Error(`Expected Config's "users" entry to have a "name" property`);
       }
@@ -299,7 +307,11 @@ export class KubeConfig {
       throw new Error(`Expected property "contexts" of Config to an array`);
     }
 
-    for (const context of config.contexts) {
+    for (const context of config.contexts as unknown[]) {
+      if (typeof context !== "object" || !context) {
+        throw new Error("Expected to see an object");
+      }
+
       if (!has(context, "name")) {
         throw new Error(`Expected Config's "contexts" entry to have a "name" property`);
       }

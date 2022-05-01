@@ -75,6 +75,7 @@ export class Exec {
 
     this.stdin = new Writable({
       write(chunk, encoding, callback) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         ws.send(Buffer.concat([Buffer.of(0), Buffer.from(chunk, encoding)]), callback);
       },
     });

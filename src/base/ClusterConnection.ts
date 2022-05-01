@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from "async_hooks";
 import { accessSync, readFileSync } from "fs";
-import type { IncomingMessage, OutgoingHttpHeaders } from "http";
+import type { IncomingMessage } from "http";
 import { Agent } from "https";
 import { homedir } from "os";
 import { join } from "path";
@@ -60,6 +60,7 @@ export class WatchStream extends Transform {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   _transform(chunk: any, encoding: BufferEncoding, callback: (error?: Error | null, data?: any) => void) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     let current = chunk instanceof Buffer ? chunk : Buffer.from(chunk, encoding);
 
     for (;;) {
@@ -95,6 +96,8 @@ export class ClusterConnection {
   }
 
   private client: AxiosInstance;
+
+  private headers: Record<string, string> = {};
 
   public readonly options: Readonly<ClusterConnectionOptions>;
 
@@ -150,33 +153,31 @@ export class ClusterConnection {
         const config = new KubeConfig(kubeconfig);
         const context = config.context(options.context);
 
-        const headers = {} as Record<string, string | string[]>;
-
         if (context.user.token) {
-          headers.Authorization = `Bearer ${context.user.token}`;
+          this.headers.Authorization = `Bearer ${context.user.token}`;
         } else if (context.user.username) {
-          headers.Authorization = `Basic ${Buffer.from(
+          this.headers.Authorization = `Basic ${Buffer.from(
             `${context.user.username}:${unescape(encodeURIComponent(context.user.password ?? ""))}`,
           ).toString("base64")}`;
         }
 
         if (context.user.impersonateUser) {
-          headers["Impersonate-User"] = context.user.impersonateUser;
+          this.headers["Impersonate-User"] = context.user.impersonateUser;
         }
 
         if (context.user.impersonateGroups) {
-          headers["Impersonate-Group"] = context.user.impersonateGroups;
+          this.headers["Impersonate-Group"] = context.user.impersonateGroups.join(", ");
         }
 
         if (context.user.impersonateExtra) {
           for (const [key, value] of context.user.impersonateExtra) {
-            headers[`Impersonate-Extra-${key}`] = value;
+            this.headers[`Impersonate-Extra-${key}`] = value;
           }
         }
 
         this.client = Axios.create({
           baseURL: context.cluster.server.toString(),
-          headers,
+          headers: this.headers,
           httpsAgent: new Agent({
             ...(context.cluster.certificateAuthorityData ? { ca: context.cluster.certificateAuthorityData } : {}),
             ...(context.user.clientCertificateData && context.user.clientKeyData
@@ -195,12 +196,11 @@ export class ClusterConnection {
           const ca = readFileSync("/var/run/secrets/kubernetes.io/serviceaccount/ca.crt");
 
           this.namespace = readFileSync("/var/run/secrets/kubernetes.io/serviceaccount/namespace", "utf-8");
+          this.headers.Authorization = `Bearer ${token}`;
 
           this.client = Axios.create({
             baseURL: "https://kubernetes.default",
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+            headers: this.headers,
             httpsAgent: new Agent({
               ca,
             }),
@@ -343,7 +343,7 @@ export class ClusterConnection {
     return new Promise<WebSocket>((resolve, reject) => {
       const wsUrl = ((this.client.defaults.baseURL?.replace(/\/$/u, "") ?? "") + url).replace(/^http/u, "ws");
       const ws = new WebSocket(wsUrl, ["v4.channel.k8s.io"], {
-        headers: this.client.defaults.headers as OutgoingHttpHeaders,
+        headers: this.headers,
         agent: this.client.defaults.httpsAgent as Agent,
       });
 
@@ -359,6 +359,7 @@ export class ClusterConnection {
       ws.on("unexpected-response", (req, res) => {
         const data: Buffer[] = [];
 
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         res.on("data", chunk => data.push(chunk));
         res.on("end", () => {
           let parsed = {};
