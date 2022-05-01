@@ -75,7 +75,7 @@
       "lcov"
     ],
     "setupFilesAfterEnv": [
-      "jest-extended"
+      "jest-extended/all"
     ]
   }
 }
