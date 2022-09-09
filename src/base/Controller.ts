@@ -1,5 +1,3 @@
-import slugify from "slugify";
-
 import { CustomResourceDefinition } from "../apiextensions.k8s.io/CustomResourceDefinition";
 import type { DeploymentSpec } from "../apps/Deployment";
 import { Deployment } from "../apps/Deployment";
@@ -699,9 +697,10 @@ export class Controller {
             data: {},
             stringData: helm
               ? Object.keys(secretEnv.values).reduce<Record<string, string>>((acc, cur) => {
-                  acc[cur] = `{{ .Values.secrets.${slugify(secretEnv.name, {
-                    strict: true,
-                  })}.${cur} | default ${JSON.stringify(secretEnv.values[cur])} }}`;
+                  acc[cur] = `{{ ((.Values.secrets).${secretEnv.name}).${cur} | default ${JSON.stringify(
+                    secretEnv.values[cur],
+                  )} }}`;
+
                   return acc;
                 }, {})
               : secretEnv.values,

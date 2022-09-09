@@ -331,9 +331,9 @@ export class ControllerCli {
       secrets: resources
         .filter(r => r.kind === "Secret")
         .reduce((acc, cur) => {
-          acc[slugify(cur.metadata.name.substring(this.controller.name.length + 1), { strict: true })] = Object.keys(
-            cur.stringData,
-          ).reduce<Record<string, string>>((acc2, cur2) => {
+          acc[cur.metadata.name.substring(this.controller.name.length + 1)] = Object.keys(cur.stringData).reduce<
+            Record<string, string>
+          >((acc2, cur2) => {
             acc2[cur2] = "";
 
             return acc2;
