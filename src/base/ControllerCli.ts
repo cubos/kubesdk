@@ -311,7 +311,11 @@ export class ControllerCli {
       console.log(`${resource.kind} ${resource.metadata.name}`);
 
       await fs.writeFile(
-        path.join(helmChartDir, "templates", `${slugify(`${resource.kind}-${resource.metadata.name}`)}.yaml`),
+        path.join(
+          helmChartDir,
+          "templates",
+          `${slugify(`${resource.kind}-${resource.metadata.name}`, { strict: true })}.yaml`,
+        ),
         // eslint-disable-next-line require-unicode-regexp
         jsyaml.dump(resource).replace(/'(?<rawValue>{{ .+ }})'$/gm, (_, rawValue: string) => rawValue),
       );
@@ -322,19 +326,19 @@ export class ControllerCli {
     }
 
     const valuesYaml = jsyaml.dump({
-      image: options.image,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      image: options.image ?? "",
+      imagePullSecrets: [],
       secrets: resources
         .filter(r => r.kind === "Secret")
         .reduce((acc, cur) => {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
-          acc[cur.metadata.name] = Object.keys(cur.stringData).reduce<any>((acc2, cur2) => {
+          acc[cur.metadata.name.substring(this.controller.name.length + 1)] = Object.keys(cur.stringData).reduce<
+            Record<string, string>
+          >((acc2, cur2) => {
             acc2[cur2] = "";
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
             return acc2;
           }, {});
 
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-return
           return acc;
         }, {}),
     });

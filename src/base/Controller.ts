@@ -697,9 +697,10 @@ export class Controller {
             data: {},
             stringData: helm
               ? Object.keys(secretEnv.values).reduce<Record<string, string>>((acc, cur) => {
-                  acc[cur] = `{{ .Values.secrets.${secretEnv.name}.${cur} | default ${JSON.stringify(
+                  acc[cur] = `{{ ((.Values.secrets).${secretEnv.name}).${cur} | default ${JSON.stringify(
                     secretEnv.values[cur],
                   )} }}`;
+
                   return acc;
                 }, {})
               : secretEnv.values,
@@ -723,9 +724,11 @@ export class Controller {
             },
           },
           spec: {
-            ...(imagePullSecret
+            ...(imagePullSecret || helm
               ? {
-                  imagePullSecrets: [{ name: imagePullSecret }],
+                  imagePullSecrets: helm
+                    ? (`{{ .Values.imagePullSecrets | default [] }}` as any) /* Helm */
+                    : [{ name: imagePullSecret }],
                 }
               : {}),
             containers: [
@@ -784,9 +787,11 @@ export class Controller {
               spec: {
                 template: {
                   spec: {
-                    ...(imagePullSecret
+                    ...(imagePullSecret || helm
                       ? {
-                          imagePullSecrets: [{ name: imagePullSecret }],
+                          imagePullSecrets: helm
+                            ? (`{{ .Values.imagePullSecrets | default [] }}` as any) /* Helm */
+                            : [{ name: imagePullSecret }],
                         }
                       : {}),
                     containers: [
@@ -863,9 +868,11 @@ export class Controller {
                 },
               },
               spec: {
-                ...(imagePullSecret
+                ...(imagePullSecret || helm
                   ? {
-                      imagePullSecrets: [{ name: imagePullSecret }],
+                      imagePullSecrets: helm
+                        ? (`{{ .Values.imagePullSecrets | default [] }}` as any) /* Helm */
+                        : [{ name: imagePullSecret }],
                     }
                   : {}),
                 containers: [
