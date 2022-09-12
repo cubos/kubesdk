@@ -316,8 +316,10 @@ export class ControllerCli {
           "templates",
           `${slugify(`${resource.kind}-${resource.metadata.name}`, { strict: true })}.yaml`,
         ),
-        // eslint-disable-next-line require-unicode-regexp
-        jsyaml.dump(resource).replace(/'(?<rawValue>{{ .+ }})'$/gm, (_, rawValue: string) => rawValue),
+        jsyaml
+          .dump(resource, { lineWidth: -1 })
+          // eslint-disable-next-line require-unicode-regexp
+          .replace(/'(?<rawValue>{{ .+ }})'$/gm, (_, rawValue: string) => rawValue),
       );
     }
 
@@ -330,7 +332,8 @@ export class ControllerCli {
       imagePullSecrets: [],
       secrets: resources
         .filter(r => r.kind === "Secret")
-        .reduce((acc, cur) => {
+        .reduce<Record<string, Record<string, string>>>((acc, cur) => {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument
           acc[cur.metadata.name.substring(this.controller.name.length + 1)] = Object.keys(cur.stringData).reduce<
             Record<string, string>
           >((acc2, cur2) => {
