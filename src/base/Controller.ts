@@ -699,7 +699,7 @@ export class Controller {
               ? Object.keys(secretEnv.values).reduce<Record<string, string>>((acc, cur) => {
                   acc[cur] = `{{ ((.Values.secrets).${secretEnv.name}).${cur} | default ${JSON.stringify(
                     secretEnv.values[cur],
-                  )} }}`;
+                  )} | quote }}`;
 
                   return acc;
                 }, {})
@@ -727,7 +727,7 @@ export class Controller {
             ...(imagePullSecret || helm
               ? {
                   imagePullSecrets: helm
-                    ? (`{{ .Values.imagePullSecrets | default [] }}` as any) /* Helm */
+                    ? (`{{ .Values.imagePullSecrets | toYaml | nindent 12 }}` as any) /* Helm */
                     : [{ name: imagePullSecret }],
                 }
               : {}),
@@ -790,7 +790,7 @@ export class Controller {
                     ...(imagePullSecret || helm
                       ? {
                           imagePullSecrets: helm
-                            ? (`{{ .Values.imagePullSecrets | default [] }}` as any) /* Helm */
+                            ? (`{{ .Values.imagePullSecrets | toYaml | nindent 12 }}` as any) /* Helm */
                             : [{ name: imagePullSecret }],
                         }
                       : {}),
@@ -871,7 +871,7 @@ export class Controller {
                 ...(imagePullSecret || helm
                   ? {
                       imagePullSecrets: helm
-                        ? (`{{ .Values.imagePullSecrets | default [] }}` as any) /* Helm */
+                        ? (`{{ .Values.imagePullSecrets | toYaml | nindent 12 }}` as any) /* Helm */
                         : [{ name: imagePullSecret }],
                     }
                   : {}),
