@@ -161,9 +161,7 @@ class ResourceListIterator<T extends IResource<unknown, unknown, unknown>> imple
 
     if (this.continue) {
       qs.append("continue", `${this.continue}`);
-    }
-
-    if (this.resourceVersion) {
+    } else if (this.resourceVersion) {
       qs.append("resourceVersion", `${this.resourceVersion}`);
     }
 
