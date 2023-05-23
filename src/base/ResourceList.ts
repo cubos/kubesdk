@@ -1,7 +1,7 @@
-import type { LabelSelector } from "../core/types";
 import { ClusterConnection } from "./ClusterConnection";
 import type { IResource } from "./Resource";
 import { ResourceListWatch } from "./ResourceListWatch";
+import type { LabelSelector } from "../core/types";
 
 type SelectableFields<KindT, IsNamespaced extends boolean> = KindT extends "Event"
   ?

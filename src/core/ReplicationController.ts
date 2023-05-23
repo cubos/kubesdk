@@ -1,7 +1,7 @@
-import type { INamespacedResource } from "../base/Resource";
-import { NamespacedResource, wrapNamespacedResource } from "../base/Resource";
 import type { PodTemplateSpec } from "./Pod";
 import type { Condition } from "./types";
+import type { INamespacedResource } from "../base/Resource";
+import { NamespacedResource, wrapNamespacedResource } from "../base/Resource";
 
 export interface ReplicationControllerMetadata {}
 

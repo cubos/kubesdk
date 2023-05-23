@@ -1,6 +1,6 @@
+import type { Subject } from "./types";
 import type { IResource } from "../base/Resource";
 import { Resource, wrapResource } from "../base/Resource";
-import type { Subject } from "./types";
 
 export interface ClusterRoleBindingMetadata {}
 

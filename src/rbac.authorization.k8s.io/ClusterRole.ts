@@ -1,7 +1,7 @@
+import type { PolicyRule } from "./types";
 import type { IResource } from "../base/Resource";
 import { Resource, wrapResource } from "../base/Resource";
 import type { LabelSelector } from "../core/types";
-import type { PolicyRule } from "./types";
 
 export interface ClusterRoleMetadata {}
 

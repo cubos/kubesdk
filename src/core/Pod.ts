@@ -1,8 +1,3 @@
-import { ClusterConnection } from "../base/ClusterConnection";
-import type { ExecOptions } from "../base/Exec";
-import { Exec } from "../base/Exec";
-import type { INamespacedResource } from "../base/Resource";
-import { NamespacedResource, wrapNamespacedResource } from "../base/Resource";
 import type {
   Condition,
   GenericVolumeSource,
@@ -13,6 +8,11 @@ import type {
   ObjectFieldSelector,
   ResourceFieldSelector,
 } from "./types";
+import { ClusterConnection } from "../base/ClusterConnection";
+import type { ExecOptions } from "../base/Exec";
+import { Exec } from "../base/Exec";
+import type { INamespacedResource } from "../base/Resource";
+import { NamespacedResource, wrapNamespacedResource } from "../base/Resource";
 
 export interface PodMetadata {}
 

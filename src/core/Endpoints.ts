@@ -1,6 +1,6 @@
+import type { ObjectReference } from "./types";
 import type { INamespacedResource } from "../base/Resource";
 import { NamespacedResource, wrapNamespacedResource } from "../base/Resource";
-import type { ObjectReference } from "./types";
 
 export interface EndpointsMetadata {}
 
