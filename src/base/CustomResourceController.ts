@@ -2,13 +2,13 @@
 import type { AsTyped } from "as-typed";
 import type { JSONSchema4 } from "json-schema";
 
+import type { INamespacedResource, IResource } from "./Resource";
+import { NamespacedResource, Resource, wrapNamespacedResource, wrapResource } from "./Resource";
 import type {
   CustomResourceDefinitionNames,
   CustomResourceDefinitionSpec,
 } from "../apiextensions.k8s.io/CustomResourceDefinition";
 import type { DeepReadonly, DeepUnReadonly } from "../utils";
-import type { INamespacedResource, IResource } from "./Resource";
-import { NamespacedResource, Resource, wrapNamespacedResource, wrapResource } from "./Resource";
 
 interface VersionSpec<SchemaT extends DeepReadonly<JSONSchema4>, VersionNameT extends string> {
   name: VersionNameT;

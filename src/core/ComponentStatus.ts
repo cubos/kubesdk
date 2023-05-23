@@ -1,6 +1,6 @@
+import type { Condition } from "./types";
 import type { IResource } from "../base/Resource";
 import { Resource, wrapResource } from "../base/Resource";
-import type { Condition } from "./types";
 
 export interface ComponentStatusMetadata {}
 

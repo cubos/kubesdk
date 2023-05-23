@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { has, sleep, throwError } from "../utils";
 import { ClusterConnection } from "./ClusterConnection";
 import { KubernetesError } from "./KubernetesError";
 import type { ListSelector } from "./ResourceList";
 import { AsyncResourceList } from "./ResourceList";
 import { ResourceWatch } from "./ResourceWatch";
+import { has, sleep, throwError } from "../utils";
 
 export interface CreatableMetadata {
   name: string;

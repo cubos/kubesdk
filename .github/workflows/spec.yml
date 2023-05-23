@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: 16
+          node-version: 20
       - run: npm i
       - run: npx tsc -noEmit
       - run: npm run eslint:check
@@ -25,7 +25,9 @@ jobs:
           - 14
           - 16
           - 18
+          - 20
         kube:
+          - kindest/node:v1.26.4@sha256:a539833d26264444ab3b8f5e56e23fa3361436445fa23c864e6dec622458858f
           - kindest/node:v1.25.2@sha256:9be91e9e9cdf116809841fc77ebdb8845443c4c72fe5218f3ae9eb57fdb4bace
           - kindest/node:v1.24.6@sha256:97e8d00bc37a7598a0b32d1fabd155a96355c49fa0d4d4790aab0f161bf31be1
           - kindest/node:v1.23.12@sha256:9402cf1330bbd3a0d097d2033fa489b2abe40d479cc5ef47d0b6a6960613148a
@@ -38,7 +40,7 @@ jobs:
           node-version: ${{ matrix.node }}
       - uses: engineerd/setup-kind@v0.5.0
         with:
-          version: v0.16.0
+          version: v0.19.0
           image: ${{ matrix.kube }}
       - run: npm install
       - run: npm test

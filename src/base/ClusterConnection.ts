@@ -8,14 +8,14 @@ import type { Readable } from "stream";
 import { Transform } from "stream";
 
 import Axios from "axios";
-import type { AxiosError, AxiosInstance, AxiosRequestConfig } from "axios";
+import type { AxiosError, AxiosInstance, AxiosRequestConfig, InternalAxiosRequestConfig } from "axios";
 import * as AxiosLogger from "axios-logger";
 import axiosRetry from "axios-retry";
 import WebSocket from "ws";
 
-import { sleep } from "../utils";
 import { KubeConfig } from "./KubeConfig";
 import { KubernetesError } from "./KubernetesError";
+import { sleep } from "../utils";
 
 interface ClusterConnectionOptions {
   logRequests: boolean;
@@ -219,7 +219,9 @@ export class ClusterConnection {
     };
 
     if (this.options.logRequests) {
-      this.client.interceptors.request.use(AxiosLogger.requestLogger);
+      this.client.interceptors.request.use(
+        AxiosLogger.requestLogger as unknown as (value: InternalAxiosRequestConfig) => InternalAxiosRequestConfig,
+      );
     }
   }
 
@@ -356,7 +358,7 @@ export class ClusterConnection {
         resolve(ws);
       });
       ws.on("error", errorHandler);
-      ws.on("unexpected-response", (req, res) => {
+      ws.on("unexpected-response", (_req, res) => {
         const data: Buffer[] = [];
 
         // eslint-disable-next-line @typescript-eslint/no-unsafe-argument

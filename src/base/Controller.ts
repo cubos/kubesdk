@@ -1,3 +1,6 @@
+import { ControllerCli } from "./ControllerCli";
+import type { CustomResourceController, CustomResourceControllerConfig } from "./CustomResourceController";
+import { KubernetesError } from "./KubernetesError";
 import { CustomResourceDefinition } from "../apiextensions.k8s.io/CustomResourceDefinition";
 import type { DeploymentSpec } from "../apps/Deployment";
 import { Deployment } from "../apps/Deployment";
@@ -12,9 +15,6 @@ import { ClusterRoleBinding } from "../rbac.authorization.k8s.io/ClusterRoleBind
 import { Role } from "../rbac.authorization.k8s.io/Role";
 import { RoleBinding } from "../rbac.authorization.k8s.io/RoleBinding";
 import type { PolicyRule } from "../rbac.authorization.k8s.io/types";
-import { ControllerCli } from "./ControllerCli";
-import type { CustomResourceController, CustomResourceControllerConfig } from "./CustomResourceController";
-import { KubernetesError } from "./KubernetesError";
 
 interface ControllerCronJob {
   name: string;

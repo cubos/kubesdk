@@ -1,6 +1,6 @@
+import type { Condition, LabelSelector, TypedLocalObjectReference } from "./types";
 import type { INamespacedResource } from "../base/Resource";
 import { NamespacedResource, wrapNamespacedResource } from "../base/Resource";
-import type { Condition, LabelSelector, TypedLocalObjectReference } from "./types";
 
 export interface PersistentVolumeClaimMetadata {}
 

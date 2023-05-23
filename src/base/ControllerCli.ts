@@ -1,23 +1,18 @@
 import { randomBytes } from "crypto";
 import { existsSync, promises as fs } from "fs";
 import path from "path";
-import util from "util";
 
 import commandLineArgs from "command-line-args";
 import commandLineUsage from "command-line-usage";
 import jsyaml from "js-yaml";
-import mkdirp from "mkdirp";
-import Rimraf from "rimraf";
+import { mkdirp } from "mkdirp";
+import { rimraf } from "rimraf";
 import slugify from "slugify";
 import { tar } from "zip-a-folder";
 
-import { has } from "../utils";
 import { ClusterConnection } from "./ClusterConnection";
 import type { Controller } from "./Controller";
-
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-
-const rimraf = util.promisify(Rimraf);
+import { has } from "../utils";
 
 export class ControllerCli {
   constructor(private controller: Controller) {}

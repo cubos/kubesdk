@@ -1,6 +1,6 @@
+import type { PolicyRule } from "./types";
 import type { INamespacedResource } from "../base/Resource";
 import { NamespacedResource, wrapNamespacedResource } from "../base/Resource";
-import type { PolicyRule } from "./types";
 
 export interface RoleMetadata {}
 
