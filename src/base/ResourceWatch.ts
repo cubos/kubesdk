@@ -31,7 +31,8 @@ export class ResourceWatch<T extends IResource<unknown, unknown, unknown>>
     private lastSeemResourceVersion?: string,
   ) {}
 
-  [Symbol.asyncIterator]() {
+  [Symbol.asyncIterator](signal?: AbortSignal) {
+    signal?.addEventListener("abort", this.close.bind(this));
     return this;
   }
 
