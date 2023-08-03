@@ -32,7 +32,8 @@ export class ResourceListWatch<T extends IResource<unknown, unknown, unknown>>
     private parseFunction: (object: object) => T | Promise<T>,
   ) {}
 
-  [Symbol.asyncIterator]() {
+  [Symbol.asyncIterator](signal?: AbortSignal) {
+    signal?.addEventListener("abort", this.close.bind(this));
     return this;
   }
 
