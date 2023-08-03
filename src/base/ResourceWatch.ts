@@ -32,10 +32,7 @@ export class ResourceWatch<T extends IResource<unknown, unknown, unknown>>
   ) {}
 
   [Symbol.asyncIterator](signal?: AbortSignal) {
-    if (signal) {
-      signal.addEventListener("abort", () => this.close());
-    }
-
+    signal?.addEventListener("abort", () => this.close());
     return this;
   }
 
