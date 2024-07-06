@@ -28,7 +28,7 @@
     "axios": "^1.4.0",
     "axios-logger": "^2.6.2",
     "axios-retry": "^3.5.0",
-    "command-line-args": "^5.2.1",
+    "command-line-args": "^6.0.0",
     "command-line-usage": "^7.0.1",
     "js-yaml": "^4.1.0",
     "mkdirp": "^3.0.1",
